@@ -1,7 +1,6 @@
-# My First Vert.x 3 Application
+# DF Producer Service
 
-This project is a very simple Vert.x 3 application and contains some explaination on how this application is built 
-and tested.
+This project is to test proxy of Kafka Connect REST API
 
 ## Building
 
@@ -25,7 +24,7 @@ The application is packaged as a _fat jar_, using the
 Once packaged, just launch the _fat jar_ as follows:
 
 ```
-java -jar target/my-first-app-1.0-SNAPSHOT-fat.jar
+java -jar target/df-producer-1.0-SNAPSHOT-fat.jar
 ```
 
 Then, open a browser to http://localhost:8080.
