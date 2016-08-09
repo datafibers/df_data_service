@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>DataFibers Processing Server Dashboard</title>
+    <title>DF Producer Service Test</title>
 
     <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
@@ -11,15 +11,15 @@
 <body>
 <div class="container" role="main">
     <div class="jumbotron">
-        <h1>DataFibers Processing Server Dashboard</h1>
+        <h1>DF Producer Service Test</h1>
 
-        <p>Just an example of simple CRUD application to manage DF jobs</p>
+        <p>Just an example of testing simple CRUD application to manage DF jobs</p>
     </div>
     <div class="page-header">
         <h1>All DF </h1>
         <button class="pull-right btn btn-primary product-add" data-action="add" data-toggle="modal"
                 data-target="#productModal">
-            <span class="glyphicon glyphicon-plus"></span> Add a new job
+            <span class="glyphicon glyphicon-plus"></span> Add New Job
         </button>
         <div class="row">
             <div class="col-md-12">
@@ -27,10 +27,11 @@
                     <thead>
                     <tr>
                         <th>#</th>
-                        <th>Name</th>
+                        <th>Job Name</th>
                         <th>Connector</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Job Config</th>
+                        <th>Connector Config</th>
                     </tr>
                     </thead>
                     <tbody id="content">
@@ -48,7 +49,7 @@
     });
 
     function create(name, origin) {
-        $.post("/api/df", JSON.stringify({name: name, connector: connector, status: status}), function () {
+        $.post("/api/df/ps/", JSON.stringify({name: name, connector: connector, status: status}), function () {
             load();
         }, "json");
     }
@@ -56,7 +57,7 @@
     function remove(id) {
         $.ajax({
             method: "DELETE",
-            url: "/api/df/" + id
+            url: "/api/df/ps/" + id
         }).done(function () {
             load();
         });
@@ -65,7 +66,7 @@
     function update(id, name, origin) {
         $.ajax({
             method: "PUT",
-            url: "/api/df/" + id,
+            url: "/api/df/ps/" + id,
             data: JSON.stringify({name: name, connector: connector, status: status})
         }).done(function () {
             load();
@@ -74,9 +75,9 @@
 
     function load() {
         $("#content").children().remove();
-        $.getJSON("/api/df", function (data) {
+        $.getJSON("/api/df/ps", function (data) {
             $.each(data, function (key, val) {
-                $("<tr><td>" + val.id + "</td><td>" + val.name + "</td><td>" + val.connector + "</td>" + val.status + "</td>" +
+                $("<tr><td>" + val.id + "</td><td>" + val.name + "</td><td>" + val.connector + "</td><td>" + val.status + "</td>"
                         "<td>" +
                         "<button data-action='edit' class='btn btn-primary btn-sm product-edit' " +
                         "data-toggle='modal' " +
@@ -149,11 +150,11 @@
                         <input type="text" class="form-control" id="product-name">
                     </div>
                     <div class="form-group">
-                        <label for="product-connector" class="control-label">Origin:</label>
+                        <label for="product-connector" class="control-label">Connector:</label>
                         <input type="text" class="form-control" id="product-connector">
                     </div>
                     <div class="form-group">
-                        <label for="product-status" class="control-label">Origin:</label>
+                        <label for="product-status" class="control-label">Status:</label>
                         <input type="text" class="form-control" id="product-status">
                     </div>
                 </form>

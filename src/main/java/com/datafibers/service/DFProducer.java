@@ -99,8 +99,12 @@ public class DFProducer extends AbstractVerticle {
   }
 
   private void addOne(RoutingContext routingContext) {
+
+    //TODO need to reformat nest json
     final DFJob DFJob = Json.decodeValue(routingContext.getBodyAsString(),
         DFJob.class);
+
+    //TODO add to Kafka REST
 
     mongo.insert(COLLECTION, DFJob.toJson(), r ->
         routingContext.response()
@@ -187,7 +191,7 @@ public class DFProducer extends AbstractVerticle {
     mongo.count(COLLECTION, new JsonObject(), count -> {
       if (count.succeeded()) {
         if (count.result() == 0) {
-          // no whiskies, insert data
+          // no jobs, insert data
           mongo.insert(COLLECTION, job1.toJson(), ar -> {
             if (ar.failed()) {
               fut.fail(ar.cause());

@@ -76,7 +76,7 @@ public class MyFirstVerticleTest {
         );
 
     // We pass the options as the second parameter of the deployVerticle method.
-    vertx.deployVerticle(MyFirstVerticle.class.getName(), options, context.asyncAssertSuccess());
+    vertx.deployVerticle(DFProducer.class.getName(), options, context.asyncAssertSuccess());
   }
 
   /**
