@@ -1,5 +1,7 @@
 package com.datafibers.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -14,6 +16,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -100,17 +103,16 @@ public class DFProducer extends AbstractVerticle {
 
   private void addOne(RoutingContext routingContext) {
 
-    //TODO need to reformat nest json
-    final DFJob DFJob = Json.decodeValue(routingContext.getBodyAsString(),
-        DFJob.class);
+    System.out.println("received the body is:" + routingContext.getBodyAsString());
 
+    final DFJob dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJob.class);
     //TODO add to Kafka REST
 
-    mongo.insert(COLLECTION, DFJob.toJson(), r ->
+    mongo.insert(COLLECTION, dfJob.toJson(), r ->
         routingContext.response()
             .setStatusCode(201)
             .putHeader("content-type", "application/json; charset=utf-8")
-            .end(Json.encodePrettily(DFJob.setId(r.result()))));
+            .end(Json.encodePrettily(dfJob.setId(r.result()))));
   }
 
   private void getOne(RoutingContext routingContext) {
@@ -124,11 +126,11 @@ public class DFProducer extends AbstractVerticle {
             routingContext.response().setStatusCode(404).end();
             return;
           }
-          DFJob DFJob = new DFJob(ar.result());
+          DFJob dfJob = new DFJob(ar.result());
           routingContext.response()
               .setStatusCode(200)
               .putHeader("content-type", "application/json; charset=utf-8")
-              .end(Json.encodePrettily(DFJob));
+              .end(Json.encodePrettily(dfJob));
         } else {
           routingContext.response().setStatusCode(404).end();
         }
@@ -180,12 +182,12 @@ public class DFProducer extends AbstractVerticle {
   }
 
   private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
-    DFJob job1 = new DFJob("Stream files job", "File Streamer Connector", "Register",
-            new JsonObject().put("config_name_job","test"), new JsonObject().put("config_name_connect","test"));
-    DFJob job2 = new DFJob("Stream database tables job", "DB Streaming Connector", "Register",
-    new JsonObject().put("config_name_job","test"), new JsonObject().put("config_name_connect","test"));
 
-    System.out.println(job1.toJson());
+    HashMap<String, String> hm = new HashMap<String, String>();
+    hm.put("path","/tmp/a.json");
+    DFJob job1 = new DFJob("Stream files job", "File Streamer Connector", "Register", hm, hm);
+    DFJob job2 = new DFJob("Batch files job", "File Batch Connector", "Register", hm, hm);
+
 
     // Do we have data in the collection ?
     mongo.count(COLLECTION, new JsonObject(), count -> {

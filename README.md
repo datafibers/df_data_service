@@ -29,3 +29,6 @@ java -jar target/df-producer-1.0-SNAPSHOT-fat.jar
 
 Then, open a browser to http://localhost:8080.
 
+
+## Todo
+1. Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
