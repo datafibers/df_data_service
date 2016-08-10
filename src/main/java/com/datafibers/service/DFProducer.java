@@ -1,7 +1,5 @@
 package com.datafibers.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -27,7 +25,7 @@ import java.util.stream.Collectors;
 
 public class DFProducer extends AbstractVerticle {
 
-  public static final String COLLECTION = "df_trans";
+  public static final String COLLECTION = "df_prod";
   private MongoClient mongo;
 
   /**
@@ -118,12 +116,12 @@ public class DFProducer extends AbstractVerticle {
   private void getOne(RoutingContext routingContext) {
     final String id = routingContext.request().getParam("id");
     if (id == null) {
-      routingContext.response().setStatusCode(400).end();
+      routingContext.response().setStatusCode(400).end("ERROR-00001: id is null in your request.");
     } else {
       mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
         if (ar.succeeded()) {
           if (ar.result() == null) {
-            routingContext.response().setStatusCode(404).end();
+            routingContext.response().setStatusCode(404).end("ERROR-00002: id cannot find in repository.");
             return;
           }
           DFJob dfJob = new DFJob(ar.result());
@@ -132,7 +130,7 @@ public class DFProducer extends AbstractVerticle {
               .putHeader("content-type", "application/json; charset=utf-8")
               .end(Json.encodePrettily(dfJob));
         } else {
-          routingContext.response().setStatusCode(404).end();
+          routingContext.response().setStatusCode(404).end("ERROR-00003: Search id in repository failed.");
         }
       });
     }
@@ -142,7 +140,7 @@ public class DFProducer extends AbstractVerticle {
     final String id = routingContext.request().getParam("id");
     JsonObject json = routingContext.getBodyAsJson();
     if (id == null || json == null) {
-      routingContext.response().setStatusCode(400).end();
+      routingContext.response().setStatusCode(400).end("ERROR-00004: id is null in your request.");
     } else {
       mongo.update(COLLECTION,
           new JsonObject().put("_id", id), // Select a unique document
@@ -151,11 +149,11 @@ public class DFProducer extends AbstractVerticle {
               .put("$set", json),
           v -> {
             if (v.failed()) {
-              routingContext.response().setStatusCode(404).end();
+              routingContext.response().setStatusCode(404).end("ERROR-00005: updateOne to repository is failed.");
             } else {
               routingContext.response()
                   .putHeader("content-type", "application/json; charset=utf-8")
-                  .end(Json.encodePrettily(new DFJob(id, json.getString("name"), json.getString("origin"))));
+                  .end(Json.encodePrettily(new DFJob(json).setId(id)));
             }
           });
     }
@@ -164,10 +162,10 @@ public class DFProducer extends AbstractVerticle {
   private void deleteOne(RoutingContext routingContext) {
     String id = routingContext.request().getParam("id");
     if (id == null) {
-      routingContext.response().setStatusCode(400).end();
+      routingContext.response().setStatusCode(400).end("ERROR-00006: id is null in your request.");
     } else {
       mongo.removeOne(COLLECTION, new JsonObject().put("_id", id),
-          ar -> routingContext.response().setStatusCode(204).end());
+          ar -> routingContext.response().end(id + " is deleted from repository."));
     }
   }
 
