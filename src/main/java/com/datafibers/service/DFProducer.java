@@ -71,6 +71,8 @@ public class DFProducer extends AbstractVerticle {
     router.get("/api/df/ps/:id").handler(this::getOne);
     router.put("/api/df/ps/:id").handler(this::updateOne);
     router.delete("/api/df/ps/:id").handler(this::deleteOne);
+    router.options("/api/df/ps/:id").handler(this::corsHandle);
+    router.options("/api/df/ps").handler(this::corsHandle);
 
 
     // Create the HTTP server and pass the "accept" method to the request handler.
@@ -137,8 +139,12 @@ public class DFProducer extends AbstractVerticle {
   }
 
   private void updateOne(RoutingContext routingContext) {
+
+    System.out.println("received the body is from updateOne:" + routingContext.getBodyAsString());
+
     final String id = routingContext.request().getParam("id");
-    JsonObject json = routingContext.getBodyAsJson();
+    final DFJob dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJob.class);
+    JsonObject json = dfJob.toJson();
     if (id == null || json == null) {
       routingContext.response().setStatusCode(400).end("ERROR-00004: id is null in your request.");
     } else {
@@ -153,7 +159,7 @@ public class DFProducer extends AbstractVerticle {
             } else {
               routingContext.response()
                   .putHeader("content-type", "application/json; charset=utf-8")
-                  .end(Json.encodePrettily(new DFJob(json).setId(id)));
+                  .end();
             }
           });
     }
@@ -177,6 +183,13 @@ public class DFProducer extends AbstractVerticle {
           .putHeader("content-type", "application/json; charset=utf-8")
           .end(Json.encodePrettily(jobs));
     });
+  }
+
+  public void corsHandle(RoutingContext routingContext) {
+
+    routingContext.response().putHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+    .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
+    .putHeader("Access-Control-Max-Age", "60").end();
   }
 
   private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {

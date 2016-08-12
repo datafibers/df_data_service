@@ -7,6 +7,10 @@ import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.util.HashMap;
 
+/**
+ * Meta Objects
+ */
+
 public class DFJob {
 
   private String id; //id as pk, which is also used as job id
@@ -15,6 +19,14 @@ public class DFJob {
   private String connector; //name of the connector used
   private String connectorType; //Indetify if it is kafka connector or others, such as [KAFKA_CONNECT, HDFS_CONNECT, FILESYS_CONNECT, HIVE_CONNECT]
   private String status; //job status
+
+  /*
+   * The reason we keep them as HashMap is because we do not want to SerDe all field (in that case, we have to define all attribute in
+   * configuration file we may use. By using hashmap, we have such flexibility to have one attribute packs all possible configurations.
+   * As result, this two below fields are saved as string instead object in mongo and lose native good format (not true nest json). But,
+   * we keep flexibility to do any processing through hashmap. And, we can expect any configuration in the config file without changing
+   * our code.
+   */
   private HashMap<String, String> jobConfig; //configuration or metadata for the job
   private HashMap<String, String> connectorConfig; //configuration for the connector used
 
@@ -62,8 +74,21 @@ public class DFJob {
     this.id = json.getString("_id");
 
     try {
-      this.jobConfig = new ObjectMapper().readValue(json.getString("jobConfig"), new TypeReference<HashMap<String, String>>() {});
-      this.connectorConfig = new ObjectMapper().readValue(json.getString("connectorConfig"), new TypeReference<HashMap<String, String>>() {});
+
+      String jobConfig = json.getString("jobConfig");
+      if (jobConfig == null) {
+        this.jobConfig = null;
+      } else {
+        this.jobConfig = new ObjectMapper().readValue(jobConfig, new TypeReference<HashMap<String, String>>() {});
+      }
+
+      String connectorConfig = json.getString("connectorConfig");
+      if (jobConfig == null) {
+        this.connectorConfig = null;
+      } else {
+        this.connectorConfig = new ObjectMapper().readValue(connectorConfig, new TypeReference<HashMap<String, String>>() {});
+      }
+
     } catch (IOException ioe ) {
       ioe.printStackTrace();
     }
