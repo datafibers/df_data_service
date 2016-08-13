@@ -1,5 +1,6 @@
 {
   "http.port": 8082,
   "db_name": "df",
-  "connection_string": "mongodb://localhost:27017"
+  "connection_string": "mongodb://localhost:27017",
+  "kafka_connect_enable" : "true"
 }

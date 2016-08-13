@@ -11,19 +11,27 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
-      <version>3.1.0</version>
+      <version>3.3.2</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web</artifactId>
-      <version>3.1.0</version>
+      <version>3.3.2</version>
     </dependency>
 
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-mongo-client</artifactId>
-      <version>3.1.0</version>
+      <version>3.3.2</version>
     </dependency>
+
+    <!-- https://mvnrepository.com/artifact/com.hubrick.vertx/vertx-rest-client -->
+    <dependency>
+      <groupId>com.hubrick.vertx</groupId>
+      <artifactId>vertx-rest-client</artifactId>
+      <version>2.1.0</version>
+    </dependency>
+
 
 
     <!-- For the tests -->
@@ -36,7 +44,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
-      <version>3.1.0</version>
+      <version>3.3.2</version>
       <scope>test</scope>
     </dependency>
 

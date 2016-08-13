@@ -1,5 +1,15 @@
 package com.datafibers.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
+import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RestClient;
+import com.hubrick.vertx.rest.RestClientOptions;
+import com.hubrick.vertx.rest.RestClientRequest;
+import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
+import com.hubrick.vertx.rest.converter.HttpMessageConverter;
+import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
+import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -14,6 +24,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +38,10 @@ public class DFProducer extends AbstractVerticle {
 
   public static final String COLLECTION = "df_prod";
   private MongoClient mongo;
+  private Boolean kafka_connect_enabled;
+  private String kafka_connect_rest_host;
+  private Integer kafka_connect_rest_port;
+  private RestClient rc;
 
   /**
    * This method is called when the verticle is deployed. It creates a HTTP server and registers a simple request
@@ -67,10 +82,10 @@ public class DFProducer extends AbstractVerticle {
 
     router.get("/api/df/ps").handler(this::getAll);
     router.route("/api/df/ps*").handler(BodyHandler.create());
-    router.post("/api/df/ps").handler(this::addOne);
+    router.post("/api/df/ps").handler(this::addOne); // Need kafka connect (KC) forward
     router.get("/api/df/ps/:id").handler(this::getOne);
-    router.put("/api/df/ps/:id").handler(this::updateOne);
-    router.delete("/api/df/ps/:id").handler(this::deleteOne);
+    router.put("/api/df/ps/:id").handler(this::updateOne); // Need kafka connect (KC) forward
+    router.delete("/api/df/ps/:id").handler(this::deleteOne); // Need kafka connect (KC) forward
     router.options("/api/df/ps/:id").handler(this::corsHandle);
     router.options("/api/df/ps").handler(this::corsHandle);
 
@@ -85,6 +100,34 @@ public class DFProducer extends AbstractVerticle {
             config().getInteger("http.port", 8080),
             next::handle
         );
+
+    // Check if Kafka Connect is enabled from configuration and other settings
+    this.kafka_connect_enabled = config().getBoolean("kafka_connect_enable", Boolean.TRUE );
+    this.kafka_connect_rest_host = config().getString("kafka_connect_rest_host", "localhost");
+    this.kafka_connect_rest_port = config().getInteger("kafka_connect_rest_port", 8083);
+
+    // Start REST API Client for Kafka Connect if needed
+    if(this.kafka_connect_enabled) {
+
+      final ObjectMapper objectMapper = new ObjectMapper();
+      final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+              new FormHttpMessageConverter(),
+              new StringHttpMessageConverter(),
+              new JacksonJsonHttpMessageConverter(objectMapper)
+      );
+
+      final RestClientOptions restClientOptions = new RestClientOptions()
+              .setConnectTimeout(1000)
+              .setGlobalRequestTimeout(5000)
+              .setDefaultHost(this.kafka_connect_rest_host)
+              .setDefaultPort(this.kafka_connect_rest_port)
+              .setKeepAlive(true)
+              .setMaxPoolSize(500);
+
+      this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
+    }
+
+
   }
 
   private void completeStartup(AsyncResult<HttpServer> http, Future<Void> fut) {
@@ -106,13 +149,40 @@ public class DFProducer extends AbstractVerticle {
     System.out.println("received the body is:" + routingContext.getBodyAsString());
 
     final DFJob dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJob.class);
-    //TODO add to Kafka REST
 
-    mongo.insert(COLLECTION, dfJob.toJson(), r ->
-        routingContext.response()
-            .setStatusCode(201)
-            .putHeader("content-type", "application/json; charset=utf-8")
-            .end(Json.encodePrettily(dfJob.setId(r.result()))));
+    System.out.println("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
+
+    //TODO add to Kafka REST and Check ConnectType
+    if(this.kafka_connect_enabled) {
+
+      // add to kafka connect first TODO need to accept result into class
+      final RestClientRequest postRestClientRequest = rc.post("/connectors", portRestResponse -> {
+        System.out.println("receiving response from kafka: " + portRestResponse.getBody());
+        // TODO: Handle response
+        mongo.insert(COLLECTION, dfJob.toJson(), r ->
+                routingContext.response()
+                        .setStatusCode(201)
+                        .putHeader("content-type", "application/json; charset=utf-8")
+                        .end(Json.encodePrettily(dfJob.setId(r.result()))));
+      });
+
+      postRestClientRequest.exceptionHandler(exception -> {
+        // TODO: Handle exception
+        System.out.println("receiving response from kafka: " + exception);
+      });
+
+      postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+      postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+      postRestClientRequest.end(dfJob.toKafkaConnectJson().toString());
+
+    } else {
+      mongo.insert(COLLECTION, dfJob.toJson(), r ->
+              routingContext.response()
+                      .setStatusCode(201)
+                      .putHeader("content-type", "application/json; charset=utf-8")
+                      .end(Json.encodePrettily(dfJob.setId(r.result()))));
+    }
+
   }
 
   private void getOne(RoutingContext routingContext) {

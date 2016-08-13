@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 /**
- * Meta Objects
+ * Meta Objects Response for REST API
  */
 
 public class DFJob {
@@ -123,6 +123,15 @@ public class DFJob {
     return json;
   }
 
+  public JsonObject toKafkaConnectJson() {
+
+    JsonObject json = new JsonObject()
+            .put("name", name)
+            .put("config", mapToJsonObj(connectorConfig));
+
+    return json;
+  }
+
   public String getName() {
     return name;
   }
@@ -201,5 +210,14 @@ public class DFJob {
       e.printStackTrace();
     }
     return null;
+  }
+
+  public JsonObject mapToJsonObj(HashMap<String, String> hm) {
+
+    JsonObject json = new JsonObject();
+    for(String key : hm.keySet()) {
+      json.put(key, hm.get(key));
+    }
+    return json;
   }
 }
