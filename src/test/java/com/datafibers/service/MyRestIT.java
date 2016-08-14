@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.model.DFJobPOPJ;
 import com.jayway.restassured.RestAssured;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -45,9 +46,9 @@ public class MyRestIT {
 
   @Test
   public void checkWeCanAddAndDeleteAProduct() {
-    // Create a new bottle and retrieve the result (as a DFJob instance).
-    DFJob DFJob = given()
-        .body("{\"name\":\"Jameson\", \"origin\":\"Ireland\"}").request().post("/api/whiskies").thenReturn().as(DFJob.class);
+    // Create a new bottle and retrieve the result (as a DFJobPOPJ instance).
+    DFJobPOPJ DFJob = given()
+        .body("{\"name\":\"Jameson\", \"origin\":\"Ireland\"}").request().post("/api/whiskies").thenReturn().as(DFJobPOPJ.class);
     assertThat(DFJob.getName()).isEqualToIgnoringCase("Jameson");
     assertThat(DFJob.getConnector()).isEqualToIgnoringCase("Ireland");
     assertThat(DFJob.getId()).isNotEmpty();

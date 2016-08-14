@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.model.DFJobPOPJ;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
@@ -118,7 +119,7 @@ public class MyFirstVerticleTest {
       context.assertEquals(response.statusCode(), 200);
       context.assertEquals(response.headers().get("content-type"), "text/html");
       response.bodyHandler(body -> {
-        context.assertTrue(body.toString().contains("<title>My DFJob Collection</title>"));
+        context.assertTrue(body.toString().contains("<title>My DFJobPOPJ Collection</title>"));
         async.complete();
       });
     });
@@ -127,7 +128,7 @@ public class MyFirstVerticleTest {
   @Test
   public void checkThatWeCanAdd(TestContext context) {
     Async async = context.async();
-    final String json = Json.encodePrettily(new DFJob("Jameson", "Ireland","Register"));
+    final String json = Json.encodePrettily(new DFJobPOPJ("Jameson", "Ireland","Register"));
     vertx.createHttpClient().post(port, "localhost", "/api/df")
         .putHeader("content-type", "application/json")
         .putHeader("content-length", Integer.toString(json.length()))
@@ -135,7 +136,7 @@ public class MyFirstVerticleTest {
           context.assertEquals(response.statusCode(), 201);
           context.assertTrue(response.headers().get("content-type").contains("application/json"));
           response.bodyHandler(body -> {
-            final DFJob DFJob = Json.decodeValue(body.toString(), DFJob.class);
+            final DFJobPOPJ DFJob = Json.decodeValue(body.toString(), DFJobPOPJ.class);
             context.assertEquals(DFJob.getName(), "Jameson");
             context.assertEquals(DFJob.getConnector(), "Ireland");
             context.assertNotNull(DFJob.getId());

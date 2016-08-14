@@ -1,5 +1,7 @@
 package com.datafibers.service;
 
+import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.util.Runner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.hubrick.vertx.rest.MediaType;
@@ -42,6 +44,13 @@ public class DFProducer extends AbstractVerticle {
   private String kafka_connect_rest_host;
   private Integer kafka_connect_rest_port;
   private RestClient rc;
+
+  public static void main(String[] args) //For debug purpose only
+  {
+
+    Runner.runExample(DFProducer.class);
+
+  }
 
   /**
    * This method is called when the verticle is deployed. It creates a HTTP server and registers a simple request
@@ -148,17 +157,28 @@ public class DFProducer extends AbstractVerticle {
 
     System.out.println("received the body is:" + routingContext.getBodyAsString());
 
-    final DFJob dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJob.class);
+    final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
 
     System.out.println("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
-    //TODO add to Kafka REST and Check ConnectType
-    if(this.kafka_connect_enabled) {
+    //TODO add to generic function to validate the connect first
+    //TODO fetch all available connectors to submit job
+    //TODO Connector|Job Status
+    if(this.kafka_connect_enabled && dfJob.getConnectorType().equalsIgnoreCase("KAFKA_CONNECT")) {
 
-      // add to kafka connect first TODO need to accept result into class
-      final RestClientRequest postRestClientRequest = rc.post("/connectors", portRestResponse -> {
-        System.out.println("receiving response from kafka: " + portRestResponse.getBody());
-        // TODO: Handle response
+      // add to kafka connect first simply to string
+      final RestClientRequest postRestClientRequest = rc.post("/connectors", String.class, portRestResponse -> {
+
+        String rs = portRestResponse.getBody();
+        System.out.println("receiving response form Kafka Connect: " + rs);
+        JsonObject jo = new JsonObject(rs);
+        System.out.println("json object name: " + jo.getString("name"));
+        System.out.println("json object config: " + jo.getJsonObject("config"));
+        System.out.println("json object tasks: " + jo.getMap().get("tasks"));
+        System.out.println("receiving response from kafka connect: " + portRestResponse.statusMessage());
+        System.out.println("receiving response from kafka connect: " + portRestResponse.statusCode());
+
+        // Add records to local repository
         mongo.insert(COLLECTION, dfJob.toJson(), r ->
                 routingContext.response()
                         .setStatusCode(201)
@@ -167,8 +187,12 @@ public class DFProducer extends AbstractVerticle {
       });
 
       postRestClientRequest.exceptionHandler(exception -> {
-        // TODO: Handle exception
-        System.out.println("receiving response from kafka: " + exception);
+
+        routingContext.response()
+                .setStatusCode(409)
+                .putHeader("content-type", "application/json; charset=utf-8")
+                .end(errorMsg(10, "Response exception from Kafka Connect for duplicated connectors - "
+                        + exception.toString()));
       });
 
       postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
@@ -188,21 +212,21 @@ public class DFProducer extends AbstractVerticle {
   private void getOne(RoutingContext routingContext) {
     final String id = routingContext.request().getParam("id");
     if (id == null) {
-      routingContext.response().setStatusCode(400).end("ERROR-00001: id is null in your request.");
+      routingContext.response().setStatusCode(400).end(errorMsg(20, "id is null in your request."));
     } else {
       mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
         if (ar.succeeded()) {
           if (ar.result() == null) {
-            routingContext.response().setStatusCode(404).end("ERROR-00002: id cannot find in repository.");
+            routingContext.response().setStatusCode(404).end(errorMsg(21, "id cannot find in repository."));
             return;
           }
-          DFJob dfJob = new DFJob(ar.result());
+          DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
           routingContext.response()
               .setStatusCode(200)
               .putHeader("content-type", "application/json; charset=utf-8")
               .end(Json.encodePrettily(dfJob));
         } else {
-          routingContext.response().setStatusCode(404).end("ERROR-00003: Search id in repository failed.");
+          routingContext.response().setStatusCode(404).end(errorMsg(22, "Search id in repository failed."));
         }
       });
     }
@@ -213,7 +237,7 @@ public class DFProducer extends AbstractVerticle {
     System.out.println("received the body is from updateOne:" + routingContext.getBodyAsString());
 
     final String id = routingContext.request().getParam("id");
-    final DFJob dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJob.class);
+    final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
     JsonObject json = dfJob.toJson();
     if (id == null || json == null) {
       routingContext.response().setStatusCode(400).end("ERROR-00004: id is null in your request.");
@@ -225,7 +249,7 @@ public class DFProducer extends AbstractVerticle {
               .put("$set", json),
           v -> {
             if (v.failed()) {
-              routingContext.response().setStatusCode(404).end("ERROR-00005: updateOne to repository is failed.");
+              routingContext.response().setStatusCode(404).end(errorMsg(30, "updateOne to repository is failed."));
             } else {
               routingContext.response()
                   .putHeader("content-type", "application/json; charset=utf-8")
@@ -238,7 +262,7 @@ public class DFProducer extends AbstractVerticle {
   private void deleteOne(RoutingContext routingContext) {
     String id = routingContext.request().getParam("id");
     if (id == null) {
-      routingContext.response().setStatusCode(400).end("ERROR-00006: id is null in your request.");
+      routingContext.response().setStatusCode(400).end(errorMsg(30, "id is null in your request."));
     } else {
       mongo.removeOne(COLLECTION, new JsonObject().put("_id", id),
           ar -> routingContext.response().end(id + " is deleted from repository."));
@@ -248,7 +272,7 @@ public class DFProducer extends AbstractVerticle {
   private void getAll(RoutingContext routingContext) {
     mongo.find(COLLECTION, new JsonObject(), results -> {
       List<JsonObject> objects = results.result();
-      List<DFJob> jobs = objects.stream().map(DFJob::new).collect(Collectors.toList());
+      List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
       routingContext.response()
           .putHeader("content-type", "application/json; charset=utf-8")
           .end(Json.encodePrettily(jobs));
@@ -261,13 +285,13 @@ public class DFProducer extends AbstractVerticle {
     .putHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
     .putHeader("Access-Control-Max-Age", "60").end();
   }
-
+//TODO need initial method to import all available|paused|running connectors from kafka connect
   private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
 
     HashMap<String, String> hm = new HashMap<String, String>();
     hm.put("path","/tmp/a.json");
-    DFJob job1 = new DFJob("Stream files job", "File Streamer Connector", "Register", hm, hm);
-    DFJob job2 = new DFJob("Batch files job", "File Batch Connector", "Register", hm, hm);
+    DFJobPOPJ job1 = new DFJobPOPJ("Stream files job", "File Streamer Connector", "Register", hm, hm);
+    DFJobPOPJ job2 = new DFJobPOPJ("Batch files job", "File Batch Connector", "Register", hm, hm);
 
 
     // Do we have data in the collection ?
@@ -296,5 +320,17 @@ public class DFProducer extends AbstractVerticle {
         fut.fail(count.cause());
       }
     });
+  }
+
+  /**
+   * Print error message in better JSON format
+   * @param error_code
+   * @param msg
+   * @return
+     */
+  private String errorMsg(int error_code, String msg) {
+    return Json.encodePrettily(new JsonObject()
+            .put("code", String.format("%6d", error_code))
+            .put("message", msg));
   }
 }

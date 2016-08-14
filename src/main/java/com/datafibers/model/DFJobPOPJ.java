@@ -1,4 +1,4 @@
-package com.datafibers.service;
+package com.datafibers.model;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,7 +11,7 @@ import java.util.HashMap;
  * Meta Objects Response for REST API
  */
 
-public class DFJob {
+public class DFJobPOPJ {
 
   private String id; //id as pk, which is also used as job id
   private String taskId; //Identify each task in a job
@@ -30,8 +30,8 @@ public class DFJob {
   private HashMap<String, String> jobConfig; //configuration or metadata for the job
   private HashMap<String, String> connectorConfig; //configuration for the connector used
 
-  public DFJob(String task_id, String name, String connector, String connector_type, String status,
-               HashMap<String, String> job_config, HashMap<String, String>  connector_config ) {
+  public DFJobPOPJ(String task_id, String name, String connector, String connector_type, String status,
+                   HashMap<String, String> job_config, HashMap<String, String>  connector_config ) {
     this.taskId = task_id;
     this.name = name;
     this.connector = connector;
@@ -42,8 +42,8 @@ public class DFJob {
     this.connectorConfig = connector_config;
   }
 
-  public DFJob(String name, String connector, String status,
-               HashMap<String, String> job_config, HashMap<String, String>  connector_config ) {
+  public DFJobPOPJ(String name, String connector, String status,
+                   HashMap<String, String> job_config, HashMap<String, String>  connector_config ) {
     this.taskId = "0";
     this.name = name;
     this.connector = connector;
@@ -54,7 +54,7 @@ public class DFJob {
     this.connectorConfig = connector_config;
   }
 
-  public DFJob(String name, String connector, String status) {
+  public DFJobPOPJ(String name, String connector, String status) {
     this.name = name;
     this.connector = connector;
     this.connectorType = "KAFKA_CONNECT";
@@ -65,7 +65,7 @@ public class DFJob {
     this.connectorConfig = null;
   }
 
-  public DFJob(JsonObject json) {
+  public DFJobPOPJ(JsonObject json) {
     this.taskId = json.getString("taskId");
     this.name = json.getString("name");
     this.connector = json.getString("connector");
@@ -95,11 +95,11 @@ public class DFJob {
 
   }
 
-  public DFJob() {
+  public DFJobPOPJ() {
     this.id = "";
   }
 
-  public DFJob(String id, String name, String connector, String status) {
+  public DFJobPOPJ(String id, String name, String connector, String status) {
     this.id = id;
     this.name = name;
     this.connector = connector;
@@ -162,42 +162,42 @@ public class DFJob {
     return connectorConfig;
   }
 
-  public DFJob setName(String name) {
+  public DFJobPOPJ setName(String name) {
     this.name = name;
     return this;
   }
 
-  public DFJob setConnector(String connector) {
+  public DFJobPOPJ setConnector(String connector) {
     this.connector = connector;
     return this;
   }
 
-  public DFJob setConnectorType(String connector_type) {
+  public DFJobPOPJ setConnectorType(String connector_type) {
     this.connectorType = connector_type;
     return this;
   }
 
-  public DFJob setStatus(String status) {
+  public DFJobPOPJ setStatus(String status) {
       this.status = status;
       return this;
   }
 
-  public DFJob setId(String id) {
+  public DFJobPOPJ setId(String id) {
     this.id = id;
     return this;
   }
 
-  public DFJob setTaskId(String task_id) {
+  public DFJobPOPJ setTaskId(String task_id) {
     this.taskId = task_id;
     return this;
   }
 
-  public DFJob setConnectorConfig(HashMap<String, String>  connector_config) {
+  public DFJobPOPJ setConnectorConfig(HashMap<String, String>  connector_config) {
     this.connectorConfig = connector_config;
     return this;
   }
 
-  public DFJob setJobConfig(HashMap<String, String> job_config) {
+  public DFJobPOPJ setJobConfig(HashMap<String, String> job_config) {
     this.jobConfig = job_config;
     return this;
   }
