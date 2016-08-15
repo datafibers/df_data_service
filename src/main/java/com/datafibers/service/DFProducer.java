@@ -160,10 +160,7 @@ public class DFProducer extends AbstractVerticle {
     final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
 
     System.out.println("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
-
-    //TODO add to generic function to validate the connect first
-    //TODO fetch all available connectors to submit job
-    //TODO Connector|Job Status
+    
     if(this.kafka_connect_enabled && dfJob.getConnectorType().equalsIgnoreCase("KAFKA_CONNECT")) {
 
       // add to kafka connect first simply to string
@@ -238,24 +235,81 @@ public class DFProducer extends AbstractVerticle {
 
     final String id = routingContext.request().getParam("id");
     final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
+
+    String connectorName = dfJob.getConnector();
+    String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
+
     JsonObject json = dfJob.toJson();
+
     if (id == null || json == null) {
-      routingContext.response().setStatusCode(400).end("ERROR-00004: id is null in your request.");
+      routingContext.response().setStatusCode(400).end(errorMsg(30, "id is null in your request."));
     } else {
-      mongo.update(COLLECTION,
-          new JsonObject().put("_id", id), // Select a unique document
-          // The update syntax: {$set, the json object containing the fields to update}
-          new JsonObject()
-              .put("$set", json),
-          v -> {
-            if (v.failed()) {
-              routingContext.response().setStatusCode(404).end(errorMsg(30, "updateOne to repository is failed."));
-            } else {
+
+      //find the connectorConfig original value against new value to decide if we need to forward to he kafka connect
+      mongo.findOne(COLLECTION, new JsonObject().put("_id", id), new JsonObject().put("connectorConfig", 1), res -> {
+
+        if (res.succeeded()) {
+
+          String before_update_connectorConfigString = res.result().getString("connectorConfig");
+
+          if (this.kafka_connect_enabled && dfJob.getConnectorType().equalsIgnoreCase("KAFKA_CONNECT") &&
+                  connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
+
+            System.out.println("connectorConfig has change. Will forward to Kafka Connect.");
+            System.out.println("connectorConfigString is" + connectorConfigString);
+            System.out.println("PUT URL is: " + "/connectors/" + connectorName + "/config");
+
+            final RestClientRequest postRestClientRequest = rc.put("/connectors/" + connectorName + "/config",
+                    String.class, portRestResponse -> {
+                      System.out.println("receiving response from kafka connect: " + portRestResponse.statusMessage());
+                      System.out.println("receiving response from kafka connect: " + portRestResponse.statusCode());
+                    });
+
+            postRestClientRequest.exceptionHandler(exception -> {
+
               routingContext.response()
-                  .putHeader("content-type", "application/json; charset=utf-8")
-                  .end();
-            }
-          });
+                      .setStatusCode(409)
+                      .putHeader("content-type", "application/json; charset=utf-8")
+                      .end(errorMsg(10, "Response exception from Kafka Connect for duplicated connectors - "
+                              + exception.toString()));
+            });
+
+            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
+            postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
+            postRestClientRequest.end(connectorConfigString);
+
+            mongo.update(COLLECTION,
+                    new JsonObject().put("_id", id), // Select a unique document
+                    // The update syntax: {$set, the json object containing the fields to update}
+                    new JsonObject().put("$set", json),
+                    v -> {
+                      if (v.failed()) {
+                        routingContext.response().setStatusCode(404).end(errorMsg(31, "updateOne to repository is failed."));
+                      } else {
+                        routingContext.response().putHeader("content-type", "application/json; charset=utf-8").end();
+                      }
+                    });
+
+          } else {
+            System.out.println("connectorConfig has NO change. Update in local repository only.");
+
+            mongo.update(COLLECTION,
+                    new JsonObject().put("_id", id), // Select a unique document
+                    // The update syntax: {$set, the json object containing the fields to update}
+                    new JsonObject().put("$set", json),
+                    v -> {
+                      if (v.failed()) {
+                        routingContext.response().setStatusCode(404).end(errorMsg(31, "updateOne to repository is failed."));
+                      } else {
+                        routingContext.response().putHeader("content-type", "application/json; charset=utf-8").end();
+                      }
+                    });
+          }
+
+        } else {
+          res.cause().printStackTrace();
+        }
+      });
     }
   }
 
