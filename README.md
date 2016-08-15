@@ -29,7 +29,7 @@ java -jar target/df-producer-1.0-SNAPSHOT-fat.jar
 
 Then, open a browser to http://localhost:8080.
 
-## Connector Status Life Cycle
+## DF Action (Status) Life Cycle
 1. Submit (Submitted): Keep it in df repository only
 1. Validate (Validated): Do validation in the remote server, such as Kafka
 1. Run (Running): Fetch the job and post it to the remote server, such as Kafka connect
