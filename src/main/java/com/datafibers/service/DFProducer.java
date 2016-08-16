@@ -332,6 +332,14 @@ public class DFProducer extends AbstractVerticle {
     }
 
     //TODO need initial method to import all available|paused|running connectors from kafka connect
+    private void importAllFromKafkaConnect(Handler<AsyncResult<Void>> next, Future<Void> fut) {
+
+        // Get a list of active connectors
+        // Loop aound this list to fetch config and status for each of them
+        // Create them as job and insert into local df repository
+
+    }
+
     private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
         HashMap<String, String> hm = new HashMap<String, String>();
         hm.put("path", "/tmp/a.json");
