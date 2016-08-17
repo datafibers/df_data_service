@@ -1,8 +1,11 @@
 {
-  "debug_mode": "true",
-  "http.port": 8082,
-  "db_name": "df",
-  "db_collection_name": "df_prod",
-  "connection_string": "mongodb://localhost:27017",
-  "kafka_connect_enable": "true"
+  "debug_mode":"true",
+  "http.port":8082,
+  "db_name":"df",
+  "db_collection_name":"df_prod",
+  "connection_string":"mongodb://localhost:27017",
+  "kafka_connect_rest_host":"localhost",
+  "kafka_connect_rest_port":8083,
+  "kafka_connect_enable":"true",
+  "kafka_connect_import_start":"true"
 }

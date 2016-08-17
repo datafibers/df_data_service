@@ -1,6 +1,6 @@
 # DF Producer Service
 
-This project is to test proxy of Kafka Connect REST API
+This project is to test proxy of Kafka Connect REST API on Confluent v.3.0.0
 
 ## Building
 
@@ -40,6 +40,6 @@ Then, open a browser to http://localhost:8080.
 ## Todo
 - [x] Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
 - [ ] Add to generic function to do connector validation before creation
-- [ ] Fetch all installed connectors/plugins
-- [ ] Need to report connector|job status
-- [ ] Need an initial method to import all available|paused|running connectors from kafka connect
+- [ ] Fetch all installed connectors/plugins in regularly frequency
+- [x] Need to report connector|job status
+- [x] Need an initial method to import all available|paused|running connectors from kafka connect

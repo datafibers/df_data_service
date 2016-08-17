@@ -3,6 +3,7 @@ package com.datafibers.service;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.Runner;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.hubrick.vertx.rest.MediaType;
@@ -13,6 +14,11 @@ import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.sun.deploy.association.utility.AppConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -20,6 +26,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
@@ -29,6 +36,8 @@ import io.vertx.ext.web.handler.StaticHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -43,10 +52,15 @@ public class DFProducer extends AbstractVerticle {
 
     public static String COLLECTION;
     private MongoClient mongo;
+    private RestClient rc;
+    private RestClient rc_helper;
+
     private static Boolean kafka_connect_enabled;
     private static String kafka_connect_rest_host;
     private static Integer kafka_connect_rest_port;
-    private RestClient rc;
+    private static Boolean kafka_connect_import_start;
+
+    private static String[] listOfActiveConnectNames;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFProducer.class);
 
@@ -71,14 +85,8 @@ public class DFProducer extends AbstractVerticle {
      */
     @Override
     public void start(Future<Void> fut) {
-        LOG.info("Start PDF Producer Service...");
-        // Create a Mongo client
-        mongo = MongoClient.createShared(vertx, config());
-        // Add sample data
-        createSomeData((nothing) -> startWebApp((http) -> completeStartup(http, fut)), fut);
-    }
+        LOG.info("Start DF Producer Service...");
 
-    private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
         // Get all variables
         this.COLLECTION = config().getString("db_collection_name", "df_prod");
 
@@ -86,6 +94,23 @@ public class DFProducer extends AbstractVerticle {
         this.kafka_connect_enabled = config().getBoolean("kafka_connect_enable", Boolean.TRUE);
         this.kafka_connect_rest_host = config().getString("kafka_connect_rest_host", "localhost");
         this.kafka_connect_rest_port = config().getInteger("kafka_connect_rest_port", 8083);
+        this.kafka_connect_import_start = config().getBoolean("kafka_connect_import_start", Boolean.TRUE);
+
+        // Create a Mongo client
+        mongo = MongoClient.createShared(vertx, config());
+
+        // Import from remote server. It is blocking at this point.
+        if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
+            importAllFromKafkaConnect();
+        }
+
+        // Add sample data
+        startWebApp((http) -> completeStartup(http, fut));
+        //createSomeData((nothing) -> startWebApp((http) -> completeStartup(http, fut)), fut);
+
+    }
+
+    private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
 
         // Create a router object.
         Router router = Router.router(vertx);
@@ -102,7 +127,7 @@ public class DFProducer extends AbstractVerticle {
         router.post(ConstantApp.DF_PRODUCER_REST_URL).handler(this::addOne); // Implemented Kafka Connect REST Forward
         router.get(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::getOne);
         router.put(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::updateOne); // Implemented Kafka Connect REST Forward
-        router.delete(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::deleteOne); // Implemented Kafka Connect REST Forward
+        router.delete(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::deleteOne); // TODO Implementing Kafka Connect REST Forward
         router.options(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PRODUCER_REST_URL).handler(this::corsHandle);
 
@@ -129,7 +154,16 @@ public class DFProducer extends AbstractVerticle {
                     .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
+            final RestClientOptions restClientHelperOptions = new RestClientOptions()
+                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
+                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
+                    .setDefaultHost(this.kafka_connect_rest_host)
+                    .setDefaultPort(this.kafka_connect_rest_port)
+                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
+                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
+
             this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
+            this.rc_helper = RestClient.create(vertx, restClientHelperOptions, httpMessageConverters);
         }
     }
 
@@ -331,13 +365,87 @@ public class DFProducer extends AbstractVerticle {
                 .putHeader("Access-Control-Max-Age", "60").end();
     }
 
-    //TODO need initial method to import all available|paused|running connectors from kafka connect
-    private void importAllFromKafkaConnect(Handler<AsyncResult<Void>> next, Future<Void> fut) {
+    /**
+     * Get initial method to import all available|paused|running connectors from kafka connect
+     */
+    private void importAllFromKafkaConnect() {
+        String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
+                ConstantApp.KAFKA_CONNECT_REST_URL;
+        try {
+            HttpResponse<String> res = Unirest.get(restURI)
+                    .header("accept", "application/json")
+                    .asString();
+            String resStr = res.getBody();
+            listOfActiveConnectNames = resStr.substring(2,resStr.length()-2).split(",");
+            for (String connectName: listOfActiveConnectNames) {
+                // Get connector config
+                HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
+                        .header("accept", "application/json").asJson();
+                JsonNode resConfig = resConnector.getBody();
+                // Get task status
+                HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
+                        .header("accept", "application/json").asJson();
+                String resStatus = resConnectorStatus.getBody().getObject().getJSONObject("connector").getString("state");
 
-        // Get a list of active connectors
-        // Loop aound this list to fetch config and status for each of them
-        // Create them as job and insert into local df repository
+                mongo.count(COLLECTION, new JsonObject().put("connector", connectName), count -> {
+                    if (count.succeeded()) {
+                        if (count.result() == 0) {
+                            // no jobs found, but the insert json data
+                            DFJobPOPJ insertJob = new DFJobPOPJ (
+                                    new JsonObject().put("name", "imported " + connectName)
+                                            .put("taskId", "0")
+                                            .put("connector", connectName)
+                                            .put("connectortType", ConstantApp.DF_CONNECT_TYPE.KAFKA.name())
+                                            .put("status", resStatus)
+                                            .put("jobConfig", new JsonObject().put("comments", "This is imported from Kafka Connect.").toString())
+                                            .put("connectorConfig", resConfig.getObject().toString())
+                            );
+                            mongo.insert(COLLECTION, insertJob.toJson(), ar -> {
+                                if (ar.failed()) {
+                                    LOG.error("IMPORT Status - failed", ar);
+                                } else {
+                                  LOG.debug("IMPORT Status - successfully", ar);
+                                }
+                            });
+                        } else { //update the job from import
+                            mongo.findOne(COLLECTION, new JsonObject().put("connector", connectName), null, findidRes -> {
+                                if (findidRes.succeeded()) {
+                                    DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
+                                    try {
+                                        updateJob.setStatus(resStatus).setConnectorConfig(
+                                                new ObjectMapper().readValue(resConfig.getObject().toString(),
+                                                        new TypeReference<HashMap<String, String>>(){}));
 
+                                    } catch (IOException ioe) {
+                                        LOG.error("IMPORT Status - Read Connector Config as Map failed", ioe.getCause());
+                                    }
+
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                            // The update syntax: {$set, the json object containing the fields to update}
+                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error("IMPORT Status - Update Connector Config as Map failed",
+                                                            v.cause());
+                                                } else {
+                                                    LOG.debug("IMPORT Status - Update Connector Config as Map Successfully");
+                                                }
+                                            }
+                                    );
+
+                                } else {
+                                    LOG.debug("IMPORT-UPDATE successfully", findidRes.cause());
+                                }
+                            });
+                        }
+                    } else {
+                        // report the error
+                        LOG.error("count failed",count.cause());
+                    }
+                });
+            }
+        } catch (UnirestException ue) {
+            LOG.error("Importing from Kafka Connect Server exception", ue);
+        }
     }
 
     private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
