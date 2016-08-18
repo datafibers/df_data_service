@@ -2,6 +2,9 @@ package com.datafibers.util;
 
 public final class ConstantApp {
 
+    // DF Service generic settings
+    public static final int REGULAR_REFRESH_STATUS_TO_REPO = 10000;
+
     // Vertx REST Client settings
     public static final int REST_CLIENT_CONNECT_TIMEOUT = 1000;
     public static final int REST_CLIENT_GLOBAL_REQUEST_TIMEOUT = 5000;
@@ -30,6 +33,14 @@ public final class ConstantApp {
     public static final int STATUS_CODE_BAD_REQUEST = 400;
     public static final int STATUS_CODE_NOT_FOUND = 404;
     public static final int STATUS_CODE_CONFLICT = 409;
+
+    public enum DF_STATUS {
+        UNASSIGNED, // The Kafka connector/task has not yet been assigned to a worker.
+        RUNNING, // The Kafka connector/task is running.
+        PAUSED, // The Kafka connector/task has been administratively paused.
+        FAILED, // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
+        NONE
+    }
 
     public enum DF_CONNECT_TYPE {
         KAFKA_SOURCE, //Kafka Connector import data into Kafka

@@ -18,7 +18,6 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import com.sun.deploy.association.utility.AppConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -26,13 +25,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.StaticHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,14 +50,11 @@ public class DFProducer extends AbstractVerticle {
     public static String COLLECTION;
     private MongoClient mongo;
     private RestClient rc;
-    private RestClient rc_helper;
 
     private static Boolean kafka_connect_enabled;
     private static String kafka_connect_rest_host;
     private static Integer kafka_connect_rest_port;
     private static Boolean kafka_connect_import_start;
-
-    private static String[] listOfActiveConnectNames;
 
     private static final Logger LOG = LoggerFactory.getLogger(DFProducer.class);
 
@@ -101,12 +95,18 @@ public class DFProducer extends AbstractVerticle {
 
         // Import from remote server. It is blocking at this point.
         if (this.kafka_connect_enabled && this.kafka_connect_import_start) {
-            importAllFromKafkaConnect();
+           importAllFromKafkaConnect();
         }
 
-        // Add sample data
+        // Start Core application
         startWebApp((http) -> completeStartup(http, fut));
+
+        // Add sample data
         //createSomeData((nothing) -> startWebApp((http) -> completeStartup(http, fut)), fut);
+
+        long timerID = vertx.setPeriodic(ConstantApp.REGULAR_REFRESH_STATUS_TO_REPO, id -> {
+            updateKafkaConnectorStatus();
+        });
 
     }
 
@@ -154,16 +154,7 @@ public class DFProducer extends AbstractVerticle {
                     .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
                     .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
 
-            final RestClientOptions restClientHelperOptions = new RestClientOptions()
-                    .setConnectTimeout(ConstantApp.REST_CLIENT_CONNECT_TIMEOUT)
-                    .setGlobalRequestTimeout(ConstantApp.REST_CLIENT_GLOBAL_REQUEST_TIMEOUT)
-                    .setDefaultHost(this.kafka_connect_rest_host)
-                    .setDefaultPort(this.kafka_connect_rest_port)
-                    .setKeepAlive(ConstantApp.REST_CLIENT_KEEP_LIVE)
-                    .setMaxPoolSize(ConstantApp.REST_CLIENT_MAX_POOL_SIZE);
-
             this.rc = RestClient.create(vertx, restClientOptions, httpMessageConverters);
-            this.rc_helper = RestClient.create(vertx, restClientHelperOptions, httpMessageConverters);
         }
     }
 
@@ -182,6 +173,8 @@ public class DFProducer extends AbstractVerticle {
 
     private void addOne(RoutingContext routingContext) {
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
+        // Set initial status for the job
+        dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         LOG.info("received the body is:" + routingContext.getBodyAsString());
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
@@ -369,6 +362,7 @@ public class DFProducer extends AbstractVerticle {
      * Get initial method to import all available|paused|running connectors from kafka connect
      */
     private void importAllFromKafkaConnect() {
+        LOG.info("Starting initial import data from Kafka Connect REST Server.");
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
         try {
@@ -376,8 +370,7 @@ public class DFProducer extends AbstractVerticle {
                     .header("accept", "application/json")
                     .asString();
             String resStr = res.getBody();
-            listOfActiveConnectNames = resStr.substring(2,resStr.length()-2).split(",");
-            for (String connectName: listOfActiveConnectNames) {
+            for (String connectName: resStr.substring(2,resStr.length()-2).split("\",\"")) {
                 // Get connector config
                 HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
                         .header("accept", "application/json").asJson();
@@ -404,7 +397,7 @@ public class DFProducer extends AbstractVerticle {
                                     new JsonObject().put("name", "imported " + connectName)
                                             .put("taskId", "0")
                                             .put("connector", connectName)
-                                            .put("connectortType", resConnectType)
+                                            .put("connectorType", resConnectType)
                                             .put("status", resStatus)
                                             .put("jobConfig", new JsonObject().put("comments", "This is imported from Kafka Connect.").toString())
                                             .put("connectorConfig", resConfig.getObject().toString())
@@ -442,7 +435,7 @@ public class DFProducer extends AbstractVerticle {
                                     );
 
                                 } else {
-                                    LOG.debug("IMPORT-UPDATE successfully", findidRes.cause());
+                                    LOG.error("IMPORT-UPDATE failed", findidRes.cause());
                                 }
                             });
                         }
@@ -455,6 +448,7 @@ public class DFProducer extends AbstractVerticle {
         } catch (UnirestException ue) {
             LOG.error("Importing from Kafka Connect Server exception", ue);
         }
+        LOG.info("Completed initial import data from Kafka Connect REST Server.");
     }
 
     private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
@@ -489,6 +483,62 @@ public class DFProducer extends AbstractVerticle {
                 fut.fail(count.cause());
             }
         });
+    }
+
+    /**
+     * Keep refreshing the active Kafka connector status against remote Kafka REST Server
+     */
+    private void updateKafkaConnectorStatus() {
+        //TODO Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
+        LOG.info("Starting refreshing connector status from Kafka Connect REST Server.");
+        List<String> list = new ArrayList<String>();
+        list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
+        list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
+        String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
+                ConstantApp.KAFKA_CONNECT_REST_URL;
+        // Container reused for keeping refreshing list of active Kafka jobs
+        ArrayList<String> activeKafkaConnector = new ArrayList<String>();
+        mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
+                    if (result.succeeded()) {
+                        for (JsonObject json : result.result()) {
+                            LOG.debug(json.encodePrettily());
+                            String connectName = json.getString("connector");
+                            String statusRepo = json.getString("status");
+                            // Get task status
+                            try {
+                                HttpResponse<JsonNode> resConnectorStatus =
+                                        Unirest.get(restURI + "/" + connectName + "/status")
+                                                .header("accept", "application/json").asJson();
+                                String resStatus = resConnectorStatus.getBody().getObject()
+                                        .getJSONObject("connector").getString("state");
+
+                                // Do change detection on status
+                                if (statusRepo.compareToIgnoreCase(resStatus) != 0) { //status changes
+                                    DFJobPOPJ updateJob = new DFJobPOPJ(json);
+                                    updateJob.setStatus(resStatus);
+
+                                    mongo.updateCollection(COLLECTION, new JsonObject().put("_id", updateJob.getId()),
+                                            // The update syntax: {$set, the json object containing the fields to update}
+                                            new JsonObject().put("$set", updateJob.toJson()), v -> {
+                                                if (v.failed()) {
+                                                    LOG.error("Update Status - Update status failed", v.cause());
+                                                } else {
+                                                    LOG.debug("Update Status - Update status Successfully");
+                                                }
+                                            }
+                                    );
+                                } else {
+                                    LOG.debug("Refreshing status - No changes detected on status.");
+                                }
+                            } catch (UnirestException ue) {
+                                LOG.error("Refreshing status REST client exception", ue.getCause());
+                            }
+                        }
+                    } else {
+                        LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
+                    }
+        });
+        LOG.info("Completed refreshing connector status from Kafka Connect REST Server.");
     }
 
     /**

@@ -16,7 +16,7 @@ public class DFJobPOPJ {
     private String id; // id as pk, which is also used as job id
     private String taskId; // Identify each task in a job
     private String name; // Name of the job
-    private String connector; // Name of the connector used
+    private String connector; // Name of the connector used. This will maps to Kafka Connect name attribute.
     private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connector type from enum
     private String description; // Description about job and connector
     private String status; // Job/Connector status
@@ -29,7 +29,7 @@ public class DFJobPOPJ {
      * our code.
      */
     private HashMap<String, String> jobConfig; //configuration or metadata for the job
-    private HashMap<String, String> connectorConfig; //configuration for the connector used
+    private HashMap<String, String> connectorConfig; //configuration for the connector used. This will maps to Kafka Connect config attribute
 
     public DFJobPOPJ(String task_id, String name, String connector, String connector_type, String description,
                      String status, HashMap<String, String> job_config, HashMap<String, String> connector_config) {
@@ -73,7 +73,7 @@ public class DFJobPOPJ {
         this.taskId = json.getString("taskId");
         this.name = json.getString("name");
         this.connector = json.getString("connector");
-        this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(json.getString("connectortType"));
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(json.getString("connectorType"));
         this.description = json.getString("description");
         this.status = json.getString("status");
         this.id = json.getString("_id");
@@ -119,7 +119,7 @@ public class DFJobPOPJ {
                 .put("name", name)
                 .put("taskId", taskId)
                 .put("connector", connector)
-                .put("connectortType", connectorType)
+                .put("connectorType", connectorType)
                 .put("description", description)
                 .put("status", status)
                 .put("jobConfig", mapToJsonString(jobConfig))
@@ -132,12 +132,12 @@ public class DFJobPOPJ {
     }
 
     /**
-     * Kafka connector use name and config as json attribute name
+     * Kafka connector use name and config as json attribute name. Which maps to connect and connectConfig
      * @return a json object
      */
     public JsonObject toKafkaConnectJson() {
         JsonObject json = new JsonObject()
-                .put("name", name)
+                .put("name", connector)
                     .put("config", mapToJsonObj(connectorConfig));
             return json;
     }
