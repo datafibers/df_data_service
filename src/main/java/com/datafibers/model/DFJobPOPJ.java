@@ -13,12 +13,13 @@ import java.util.HashMap;
  */
 public class DFJobPOPJ {
 
-    private String id; //id as pk, which is also used as job id
-    private String taskId; //Identify each task in a job
-    private String name; //name of the job
-    private String connector; //name of the connector used
-    private String connectorType; //Indetify if it is kafka connector or others, such as [KAFKA_CONNECT, HDFS_CONNECT, FILESYS_CONNECT, HIVE_CONNECT]
-    private String status; //job status
+    private String id; // id as pk, which is also used as job id
+    private String taskId; // Identify each task in a job
+    private String name; // Name of the job
+    private String connector; // Name of the connector used
+    private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connector type from enum
+    private String description; // Description about job and connector
+    private String status; // Job/Connector status
 
     /*
      * The reason we keep them as HashMap is because we do not want to SerDe all field (in that case, we have to define all attribute in
@@ -30,12 +31,13 @@ public class DFJobPOPJ {
     private HashMap<String, String> jobConfig; //configuration or metadata for the job
     private HashMap<String, String> connectorConfig; //configuration for the connector used
 
-    public DFJobPOPJ(String task_id, String name, String connector, String connector_type, String status,
-                     HashMap<String, String> job_config, HashMap<String, String> connector_config) {
+    public DFJobPOPJ(String task_id, String name, String connector, String connector_type, String description,
+                     String status, HashMap<String, String> job_config, HashMap<String, String> connector_config) {
         this.taskId = task_id;
         this.name = name;
         this.connector = connector;
-        this.connectorType = connector_type;
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
+        this.description = description;
         this.status = status;
         this.id = "";
         this.jobConfig = job_config;
@@ -47,7 +49,8 @@ public class DFJobPOPJ {
         this.taskId = "0";
         this.name = name;
         this.connector = connector;
-        this.connectorType = ConstantApp.DF_CONNECT_TYPE.KAFKA.name();
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
+        this.description = "";
         this.status = status;
         this.id = "";
         this.jobConfig = job_config;
@@ -57,7 +60,8 @@ public class DFJobPOPJ {
     public DFJobPOPJ(String name, String connector, String status) {
         this.name = name;
         this.connector = connector;
-        this.connectorType = ConstantApp.DF_CONNECT_TYPE.KAFKA.name();
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
+        this.description = "";
         this.status = status;
         this.id = "";
         this.taskId = "0";
@@ -69,7 +73,8 @@ public class DFJobPOPJ {
         this.taskId = json.getString("taskId");
         this.name = json.getString("name");
         this.connector = json.getString("connector");
-        this.connectorType = json.getString("connectortType");
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(json.getString("connectortType"));
+        this.description = json.getString("description");
         this.status = json.getString("status");
         this.id = json.getString("_id");
 
@@ -115,6 +120,7 @@ public class DFJobPOPJ {
                 .put("taskId", taskId)
                 .put("connector", connector)
                 .put("connectortType", connectorType)
+                .put("description", description)
                 .put("status", status)
                 .put("jobConfig", mapToJsonString(jobConfig))
                 .put("connectorConfig", mapToJsonString(connectorConfig));
@@ -145,7 +151,11 @@ public class DFJobPOPJ {
     }
 
     public String getConnectorType() {
-        return connectorType;
+        return connectorType.name();
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getStatus() {
@@ -179,7 +189,12 @@ public class DFJobPOPJ {
     }
 
     public DFJobPOPJ setConnectorType(String connector_type) {
-        this.connectorType = connector_type;
+        this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
+        return this;
+    }
+
+    public DFJobPOPJ setDescription(String description) {
+        this.description = description;
         return this;
     }
 

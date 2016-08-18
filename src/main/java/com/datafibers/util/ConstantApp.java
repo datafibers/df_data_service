@@ -32,9 +32,14 @@ public final class ConstantApp {
     public static final int STATUS_CODE_CONFLICT = 409;
 
     public enum DF_CONNECT_TYPE {
-        KAFKA, //Kafka Connector and plugins
-        EVENTBUS, //The plugin connect to Vertx Event Bus
-        HDFS, //The plugin connect to HDFS
+        KAFKA_SOURCE, //Kafka Connector import data into Kafka
+        KAFKA_SINK, //Kafka Connector export data out of Kafka
+        EVENTBUS_SOURCE, //The plugin import data into Vertx Event Bus
+        EVENTBUS_SINK, //The plugin export data out of Vertx Event Bus
+        HDFS_SOURCE, //The plugin import data into HDFS
+        HDFS_SINK, //The plugin export data out of HDFS
+        HIVE_SOURCE, //The plugin import data into Hive
+        HIVE_SINK, //The plugin export data out of Hive
         NONE
     }
 

@@ -187,7 +187,7 @@ public class DFProducer extends AbstractVerticle {
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled &&
-                dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.KAFKA.name())) {
+                dfJob.getConnectorType().contains("KAFKA")) {
 
             // Create REST Client for Kafka Connect REST Forward
             final RestClientRequest postRestClientRequest = rc.post(ConstantApp.KAFKA_CONNECT_REST_URL, String.class,
@@ -272,7 +272,7 @@ public class DFProducer extends AbstractVerticle {
 
                     // Detect changes in connectConfig
                     if (this.kafka_connect_enabled &&
-                            dfJob.getConnectorType().equalsIgnoreCase(ConstantApp.DF_CONNECT_TYPE.KAFKA.name()) &&
+                            dfJob.getConnectorType().contains("KAFKA") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
 
                         LOG.info("connectorConfig has change. Will forward to Kafka Connect.");
@@ -382,6 +382,15 @@ public class DFProducer extends AbstractVerticle {
                 HttpResponse<JsonNode> resConnector = Unirest.get(restURI + "/" + connectName + "/config")
                         .header("accept", "application/json").asJson();
                 JsonNode resConfig = resConnector.getBody();
+                String resConnectTypeTmp = resConfig.getObject().getString("connector.class");
+                String resConnectType;
+                if (resConnectTypeTmp.toUpperCase().contains("SOURCE")) {
+                    resConnectType = ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name();
+                } else if (resConnectTypeTmp.toUpperCase().contains("SINK")) {
+                    resConnectType = ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name();
+                } else {
+                    resConnectType = ConstantApp.DF_CONNECT_TYPE.NONE.name();
+                }
                 // Get task status
                 HttpResponse<JsonNode> resConnectorStatus = Unirest.get(restURI + "/" + connectName + "/status")
                         .header("accept", "application/json").asJson();
@@ -390,12 +399,12 @@ public class DFProducer extends AbstractVerticle {
                 mongo.count(COLLECTION, new JsonObject().put("connector", connectName), count -> {
                     if (count.succeeded()) {
                         if (count.result() == 0) {
-                            // no jobs found, but the insert json data
+                            // No jobs found, then insert json data
                             DFJobPOPJ insertJob = new DFJobPOPJ (
                                     new JsonObject().put("name", "imported " + connectName)
                                             .put("taskId", "0")
                                             .put("connector", connectName)
-                                            .put("connectortType", ConstantApp.DF_CONNECT_TYPE.KAFKA.name())
+                                            .put("connectortType", resConnectType)
                                             .put("status", resStatus)
                                             .put("jobConfig", new JsonObject().put("comments", "This is imported from Kafka Connect.").toString())
                                             .put("connectorConfig", resConfig.getObject().toString())
@@ -407,7 +416,7 @@ public class DFProducer extends AbstractVerticle {
                                   LOG.debug("IMPORT Status - successfully", ar);
                                 }
                             });
-                        } else { //update the job from import
+                        } else { // Update the connectConfig portion from Kafka import
                             mongo.findOne(COLLECTION, new JsonObject().put("connector", connectName), null, findidRes -> {
                                 if (findidRes.succeeded()) {
                                     DFJobPOPJ updateJob = new DFJobPOPJ(findidRes.result());
