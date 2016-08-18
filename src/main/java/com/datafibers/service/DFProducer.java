@@ -172,6 +172,7 @@ public class DFProducer extends AbstractVerticle {
     }
 
     private void addOne(RoutingContext routingContext) {
+        // Get request as object
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
@@ -179,37 +180,8 @@ public class DFProducer extends AbstractVerticle {
         LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
-        if (this.kafka_connect_enabled &&
-                dfJob.getConnectorType().contains("KAFKA")) {
-
-            // Create REST Client for Kafka Connect REST Forward
-            final RestClientRequest postRestClientRequest = rc.post(ConstantApp.KAFKA_CONNECT_REST_URL, String.class,
-                    portRestResponse -> {
-                String rs = portRestResponse.getBody();
-                JsonObject jo = new JsonObject(rs);
-                LOG.debug("json object name: " + jo.getString("name"));
-                LOG.debug("json object config: " + jo.getJsonObject("config"));
-                LOG.debug("json object tasks: " + jo.getMap().get("tasks"));
-                LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
-
-                // Once REST API forward is successful, add the record to the local repository
-                mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
-                        .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                        .end(Json.encodePrettily(dfJob.setId(r.result()))));
-            });
-
-            postRestClientRequest.exceptionHandler(exception -> {
-                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                        .end(errorMsg(10, "POST Request exception - " + exception.toString()));
-            });
-
-            postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-            postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-            postRestClientRequest.end(dfJob.toKafkaConnectJson().toString());
-
+        if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
+            KafkaConnectProcessor.forwardAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
@@ -548,7 +520,7 @@ public class DFProducer extends AbstractVerticle {
      * @param msg
      * @return
      */
-    private String errorMsg(int error_code, String msg) {
+    public static String errorMsg(int error_code, String msg) {
         return Json.encodePrettily(new JsonObject()
                 .put("code", String.format("%6d", error_code))
                 .put("message", msg));
