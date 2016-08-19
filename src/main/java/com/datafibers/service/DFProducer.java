@@ -127,7 +127,7 @@ public class DFProducer extends AbstractVerticle {
         router.post(ConstantApp.DF_PRODUCER_REST_URL).handler(this::addOne); // Implemented Kafka Connect REST Forward
         router.get(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::getOne);
         router.put(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::updateOne); // Implemented Kafka Connect REST Forward
-        router.delete(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::deleteOne); // TODO Implementing Kafka Connect REST Forward
+        router.delete(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::deleteOne); // Implemented Kafka Connect REST Forward
         router.options(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_PRODUCER_REST_URL).handler(this::corsHandle);
 
@@ -181,7 +181,7 @@ public class DFProducer extends AbstractVerticle {
 
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
-            KafkaConnectProcessor.forwardAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
+            KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
@@ -219,79 +219,37 @@ public class DFProducer extends AbstractVerticle {
         final String id = routingContext.request().getParam("id");
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         LOG.debug("received the body is from updateOne:" + routingContext.getBodyAsString());
-        String connectorName = dfJob.getConnector();
         String connectorConfigString = dfJob.mapToJsonString(dfJob.getConnectorConfig());
-
         JsonObject json = dfJob.toJson();
 
         if (id == null || json == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
                     .end(errorMsg(30, "id is null in your request."));
         } else {
-
             // Implement connectConfig change detection to decide if we need REST API forwarding
             mongo.findOne(COLLECTION, new JsonObject().put("_id", id),
                     new JsonObject().put("connectorConfig", 1), res -> {
                 if (res.succeeded()) {
                     String before_update_connectorConfigString = res.result().getString("connectorConfig");
-
                     // Detect changes in connectConfig
-                    if (this.kafka_connect_enabled &&
-                            dfJob.getConnectorType().contains("KAFKA") &&
+                    if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA") &&
                             connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
-
-                        LOG.info("connectorConfig has change. Will forward to Kafka Connect.");
-
-                        final RestClientRequest postRestClientRequest =
-                                rc.put(
-                                        ConstantApp.KAFKA_CONNECT_PLUGIN_CONFIG.
-                                                replace("CONNECTOR_NAME_PLACEHOLDER", connectorName),
-                                        String.class, portRestResponse -> {
-                                    LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                                    LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
-                                });
-
-                        postRestClientRequest.exceptionHandler(exception -> {
-                            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                    .end(errorMsg(31, "POST Request exception - " + exception.toString()));
-                        });
-
-                        postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);
-                        postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
-                        postRestClientRequest.end(connectorConfigString);
-
-                        mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
-                                // The update syntax: {$set, the json object containing the fields to update}
-                                new JsonObject().put("$set", json), v -> {
-                                    if (v.failed()) {
-                                        routingContext.response().setStatusCode(404)
-                                                .end(errorMsg(32, "updateOne to repository is failed."));
-                                    } else {
-                                        routingContext.response()
-                                                .putHeader(ConstantApp.CONTENT_TYPE,
-                                                        ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
-                                    }
-                                }
-                        );
-
+                       KafkaConnectProcessor.forwardPUTAsUpdateOne(routingContext, rc, mongo, COLLECTION, dfJob);
                     } else { // Where there is no change detected
                         LOG.info("connectorConfig has NO change. Update in local repository only.");
                         mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
                                 // The update syntax: {$set, the json object containing the fields to update}
-                                new JsonObject().put("$set", json), v -> {
+                                new JsonObject().put("$set", dfJob.toJson()), v -> {
                                     if (v.failed()) {
-                                        routingContext.response().setStatusCode(404)
+                                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
                                                 .end(errorMsg(33, "updateOne to repository is failed."));
                                     } else {
-                                        routingContext.response()
-                                                .putHeader(ConstantApp.CONTENT_TYPE,
+                                        routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
                                                         ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
                                     }
                                 }
                         );
                     }
-
                 } else {
                     LOG.error("Mongo client response exception", res.cause());
                 }
@@ -301,12 +259,18 @@ public class DFProducer extends AbstractVerticle {
 
     private void deleteOne(RoutingContext routingContext) {
         String id = routingContext.request().getParam("id");
+        final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         if (id == null) {
             routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_BAD_REQUEST)
-                    .end(errorMsg(30, "id is null in your request."));
+                    .end(errorMsg(40, "id is null in your request."));
         } else {
-            mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
-                    ar -> routingContext.response().end(id + " is deleted from repository."));
+            if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
+                KafkaConnectProcessor.forwardDELETEAsDeleteOne(routingContext, rc, mongo, COLLECTION, dfJob);
+            } else {
+                mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
+                        ar -> routingContext.response().end(id + " is deleted from repository."));
+            }
+
         }
     }
 
