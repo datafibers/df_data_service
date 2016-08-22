@@ -27,7 +27,7 @@ public class KafkaConnectProcessor {
      * for Kafka REST POST. After that, it forward the new POST to Kafka Connect.
      * Once REST API forward is successful, update data to the local repository.
      *
-     * @param routingContext This is the contect from REST API POST
+     * @param routingContext This is the contect from REST API
      * @param restClient This is vertx non-blocking rest client used for forwarding
      * @param mongoClient This is the client used to insert final data to repository - mongodb
      * @param mongoCOLLECTION This is mongodb collection name
@@ -70,7 +70,7 @@ public class KafkaConnectProcessor {
      * for Kafka REST PUT. After that, it forward the new POST to Kafka Connect.
      * Once REST API forward is successful, update data to the local repository.
      *
-     * @param routingContext This is the contect from REST API POST
+     * @param routingContext This is the contect from REST API
      * @param restClient This is vertx non-blocking rest client used for forwarding
      * @param mongoClient This is the client used to insert final data to repository - mongodb
      * @param mongoCOLLECTION This is mongodb collection name
@@ -113,7 +113,17 @@ public class KafkaConnectProcessor {
                     }
                 });
     }
-
+    /**
+     * This method first decode the REST DELETE request to DFJobPOPJ object. Then, it updates its job status and repack
+     * for Kafka REST DELETE. After that, it forward the new DELETE to Kafka Connect.
+     * Once REST API forward is successful, update data to the local repository.
+     *
+     * @param routingContext This is the contect from REST API
+     * @param restClient This is vertx non-blocking rest client used for forwarding
+     * @param mongoClient This is the client used to insert final data to repository - mongodb
+     * @param mongoCOLLECTION This is mongodb collection name
+     * @param dfJobResponsed This is the response object return to rest client or ui or mongo insert
+     */
     public static void forwardDELETEAsDeleteOne (RoutingContext routingContext, RestClient restClient, MongoClient mongoClient,
                                               String mongoCOLLECTION, DFJobPOPJ dfJobResponsed) {
         String id = routingContext.request().getParam("id");
@@ -123,7 +133,7 @@ public class KafkaConnectProcessor {
                 portRestResponse -> {
                     LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
                     LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
-                    if(portRestResponse.statusCode() == 409) {
+                    if(portRestResponse.statusCode() == ConstantApp.STATUS_CODE_OK_NO_CONTENT) {
                         // Once REST API forward is successful, delete the record to the local repository
                         mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
                                 ar -> routingContext.response().end(id + " is deleted from repository."));
@@ -133,9 +143,14 @@ public class KafkaConnectProcessor {
                 });
 
         postRestClientRequest.exceptionHandler(exception -> {
-            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
-                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                    .end(errorMsg(40, "DELETE Request exception - " + exception.toString()));
+
+            // Once REST API forward is successful, delete the record to the local repository
+            mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
+                    ar -> routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_CONFLICT)
+                            .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                            .end(errorMsg(40, "Not Found in KAFKA Connect, " +
+                                    "But delete from repository. The not found exception - " + exception.toString())));
+            LOG.info("Cannot find the connector name in DELETE request in Kafka Connect. Remove from local repo only.");
         });
 
         postRestClientRequest.setContentType(MediaType.APPLICATION_JSON);

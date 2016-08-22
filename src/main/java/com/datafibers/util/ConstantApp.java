@@ -13,6 +13,7 @@ public final class ConstantApp {
 
     // DF Producer REST endpoint URLs
     public static final String DF_PRODUCER_REST_URL = "/api/df/ps";
+    public static final String DF_PRODUCER_INSTALLED_CONNECTS_REST_URL = "/api/df/installed_connects";
     public static final String DF_PRODUCER_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_PRODUCER_REST_URL_WITH_ID = DF_PRODUCER_REST_URL + "/:id";
 
@@ -39,6 +40,7 @@ public final class ConstantApp {
         RUNNING, // The Kafka connector/task is running.
         PAUSED, // The Kafka connector/task has been administratively paused.
         FAILED, // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
+        LOST, // The Kafka connect restart and lost the connector job in DF repository. These jobs should be removed manually.
         NONE
     }
 
