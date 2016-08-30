@@ -29,6 +29,16 @@
             <artifactId>vertx-mongo-client</artifactId>
             <version>${vertx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-mysql-postgresql-client</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-sql-common</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.hubrick.vertx/vertx-rest-client -->
         <dependency>
