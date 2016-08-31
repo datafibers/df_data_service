@@ -1,6 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.Runner;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -34,10 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -82,13 +80,13 @@ public class DFProducer extends AbstractVerticle {
         LOG.info("Start DF Producer Service...");
 
         // Get all variables
-        this.COLLECTION = config().getString("db_collection_name", "df_prod");
+        this.COLLECTION = config().getString("db.collection.name.df.producer", "df_prod");
 
         // Check if Kafka Connect is enabled from configuration and other settings
-        this.kafka_connect_enabled = config().getBoolean("kafka_connect_enable", Boolean.TRUE);
-        this.kafka_connect_rest_host = config().getString("kafka_connect_rest_host", "localhost");
-        this.kafka_connect_rest_port = config().getInteger("kafka_connect_rest_port", 8083);
-        this.kafka_connect_import_start = config().getBoolean("kafka_connect_import_start", Boolean.TRUE);
+        this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
+        this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
+        this.kafka_connect_rest_port = config().getInteger("kafka.connect.rest.port", 8083);
+        this.kafka_connect_import_start = config().getBoolean("kafka.connect.import.start", Boolean.TRUE);
 
         // Create a Mongo client
         mongo = MongoClient.createShared(vertx, config());
@@ -134,7 +132,7 @@ public class DFProducer extends AbstractVerticle {
 
 
         // Create the HTTP server and pass the "accept" method to the request handler.
-        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port", 8080),
+        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port.df.producer", 8080),
                 next::handle
         );
 

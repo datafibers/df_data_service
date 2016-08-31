@@ -1,11 +1,19 @@
 {
-  "debug_mode":"true",
-  "http.port":8080,
-  "db_name":"df",
-  "db_collection_name":"df_prod",
-  "connection_string":"mongodb://localhost:27017",
-  "kafka_connect_rest_host":"localhost",
-  "kafka_connect_rest_port":8083,
-  "kafka_connect_enable":"true",
-  "kafka_connect_import_start":"true"
+  "debug.mode":"true",
+  "http.port.df.producer":8080,
+  "http.port.df.transformer":8081,
+  "db.name":"df",
+  "db.collection.name.df.producer":"df_prod",
+  "db.collection.name.df.transformer":"df_tran",
+  "repo.connection.string":"mongodb://localhost:27017",
+  "kafka.connect.rest.host":"localhost",
+  "kafka.connect.rest.port":8083,
+  "kafka.connect.enable":"true",
+  "kafka.connect.import.start":"true",
+  "transform.engine.flink.enable":"true",
+  "flink.servers.host":"localhost",
+  "flink.server.port":9092,
+  "zookeeprt.server.host":"localhost",
+  "zookeeper.server.port":2181
+
 }

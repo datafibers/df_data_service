@@ -17,6 +17,12 @@ public final class ConstantApp {
     public static final String DF_PRODUCER_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_PRODUCER_REST_URL_WITH_ID = DF_PRODUCER_REST_URL + "/:id";
 
+    // DF Transformer REST endpoint URLs
+    public static final String DF_TRANSFOMER_REST_URL = "/api/df/tr";
+    public static final String DF_TRANSFOMER_INSTALLED_CONNECTS_REST_URL = "/api/tr/installed_connects";
+    public static final String DF_TRANSFOMER_REST_URL_WILD = "/api/df/ps*";
+    public static final String DF_TRANSFOMER_REST_URL_WITH_ID = DF_TRANSFOMER_REST_URL + "/:id";
+
     // KAFKA CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
@@ -47,6 +53,8 @@ public final class ConstantApp {
     public enum DF_CONNECT_TYPE {
         KAFKA_SOURCE, //Kafka Connector import data into Kafka
         KAFKA_SINK, //Kafka Connector export data out of Kafka
+        FLINK_TRANS, //Flink transformation on single topics
+        FLINK_JOINS, //Flink transformation on multiple topics
         EVENTBUS_SOURCE, //The plugin import data into Vertx Event Bus
         EVENTBUS_SINK, //The plugin export data out of Vertx Event Bus
         HDFS_SOURCE, //The plugin import data into HDFS
