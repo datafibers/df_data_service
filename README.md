@@ -2,7 +2,7 @@
 
 This project has two [Vertx](http://www.vertx.io) defined to deal with stream ETL (Extract, Transform, and Load).
 * **DF Producer** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
-* **DF Transformer** is to leverage straming processing engine, such as Apache Flink, for data transformation.
+* **DF Transformer** is to leverage streaming processing engine, such as Apache Flink, for data transformation.
 
 ## Building
 
