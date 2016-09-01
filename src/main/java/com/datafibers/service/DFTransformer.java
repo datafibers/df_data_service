@@ -43,6 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -79,7 +81,6 @@ public class DFTransformer extends AbstractVerticle {
     @Override
     public void start(Future<Void> fut) {
         LOG.info("Start DF Transform Service...");
-        this.testFlinkSQL();
 
         // Get all variables
         this.COLLECTION = config().getString("db.collection.name.df.transformer", "df_tran");
@@ -107,6 +108,8 @@ public class DFTransformer extends AbstractVerticle {
 
     private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
 
+        this.testFlinkSQL();
+
         Router router = Router.router(vertx);
 
         router.route("/").handler(routingContext -> {
@@ -125,7 +128,7 @@ public class DFTransformer extends AbstractVerticle {
 
 
         // Create the HTTP server and pass the "accept" method to the request handler.
-        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port.df.transformer", 8081),
+        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port.df.transformer", 8070),
                 next::handle
         );
 
@@ -169,11 +172,11 @@ public class DFTransformer extends AbstractVerticle {
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.UNASSIGNED.name());
         LOG.info("received the body is:" + routingContext.getBodyAsString());
-        LOG.info("repack for kafka is:" + dfJob.toKafkaConnectJson().toString());
 
         // Start Flink job Forward only if it is enabled and Connector type is FLINK
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
             //submit flink sql
+            //dfJob.getConnectorConfig().get("group.id")
             //KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
@@ -378,45 +381,37 @@ public class DFTransformer extends AbstractVerticle {
     }
 
     public void testFlinkSQL() {
-        String kafkaTopic = "receipts";
+        String kafkaTopic = "finance";
+        String resultFile = "/home/vagrant/test.txt";
 
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
+        //StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost",9092).setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("bootstrap.servers", "localhost:9092"); //9092 for local port and 6123 for remote port
         // only required for Kafka 0.9
         properties.setProperty("zookeeper.connect", "localhost:2181");
         properties.setProperty("group.id", "consumer3");
 
-        String[] fieldNames =  new String[] { "name", "url"};
-        Class<?>[] fieldTypes = new Class<?>[] { String.class, String.class };
+        String[] fieldNames =  new String[] {"symbol", "name"};
+        Class<?>[] fieldTypes = new Class<?>[] {String.class, String.class };
 
-        KafkaJsonTableSource kafkaTableSource = new Kafka09JsonTableSource(
-                kafkaTopic,
-                properties,
-                fieldNames,
+        KafkaJsonTableSource kafkaTableSource = new Kafka09JsonTableSource(kafkaTopic, properties, fieldNames,
                 fieldTypes);
 
-        tableEnv.registerTableSource("Orders", kafkaTableSource);
+        tableEnv.registerTableSource(kafkaTopic, kafkaTableSource);
 
         // run a SQL query on the Table and retrieve the result as a new Table
-        Table result = tableEnv.sql("SELECT STREAM DISTINCT name, url FROM Orders");
+        Table result = tableEnv.sql("SELECT STREAM symbol, name FROM " + kafkaTopic);
         System.out.println(result.toString());
 
-        //DataSet<WC> re = tableEnv.toDataStream(result,WC.class);
-
-
-        // create a TableSink
-        TableSink sink = new CsvTableSink("/home/vagrant/test.txt", "|");
-
-        // write the result Table to the TableSink
-        result.writeToSink(sink);
-
-        // execute the program
         try {
-            //re.print();
+            // create a TableSink
+            Files.deleteIfExists(Paths.get(resultFile));
+            TableSink sink = new CsvTableSink(resultFile, "|");
+            result.writeToSink(sink);
+
             env.execute();
         } catch (Exception e) {
             e.printStackTrace();

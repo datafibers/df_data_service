@@ -9,7 +9,7 @@ public class DFProcessingService {
 
     public static void main(String[] args) {
 
-        if (null == args[0]) {
+        if (null == args) {
             System.err.println("Usage: java -jar DFProcessingService.jar <SERVICE_TO_DEPLOY>");
             System.err.println("Note:");
             System.err.println("<SERVICE_TO_DEPLOY>=\"s-all\": Deploy both Producer & Transform vertical in this host as single mode.");
