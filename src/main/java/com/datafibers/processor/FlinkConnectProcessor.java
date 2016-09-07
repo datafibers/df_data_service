@@ -3,14 +3,11 @@ package com.datafibers.processor;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
-import org.apache.flink.api.table.sinks.CsvTableSink;
-import org.apache.flink.api.table.sinks.TableSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Properties;
 
 /**
@@ -40,22 +37,21 @@ public class FlinkConnectProcessor {
         properties.setProperty("zookeeper.connect", "localhost:2181");
         properties.setProperty("group.id", groupid);
 
-        String[] fieldNames =  new String[] {"symbol", "name"};
-        Class<?>[] fieldTypes = new Class<?>[] {String.class, String.class };
+        String[] fieldNames = colNameList.split(",");
+        Class<?>[] fieldTypes = new Class<?>[] {String.class, String.class};
 
-        KafkaJsonTableSource kafkaTableSource = new Kafka09JsonTableSource(inputTopic, properties, fieldNames,
-                fieldTypes);
+        KafkaJsonTableSource kafkaTableSource =
+                new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
 
         tableEnv.registerTableSource(inputTopic, kafkaTableSource);
 
         // run a SQL query on the Table and retrieve the result as a new Table
         Table result = tableEnv.sql(transSql);
-        System.out.println(result.toString());
 
         try {
             // create a TableSink
-            Files.deleteIfExists(Paths.get(resultFile));
-            TableSink sink = new CsvTableSink(resultFile, "|");
+            FixedPartitioner partition =  new FixedPartitioner();
+            Kafka09JsonTableSink sink = new KaKafka09JsonTableSink(outputTopic, properties, partition);
             result.writeToSink(sink);
 
             env.execute();

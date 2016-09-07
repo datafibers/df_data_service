@@ -1,16 +1,12 @@
 package com.datafibers.service;
 
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.Runner;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientOptions;
-import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
@@ -37,12 +33,12 @@ import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.api.table.sinks.CsvTableSink;
 import org.apache.flink.api.table.sinks.TableSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSink;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -409,8 +405,10 @@ public class DFTransformer extends AbstractVerticle {
         try {
             // create a TableSink
             Files.deleteIfExists(Paths.get(resultFile));
-            TableSink sink = new CsvTableSink(resultFile, "|");
-            result.writeToSink(sink);
+           // TableSink sink = new Kafka09JsonTableSink();
+
+            //TableSink sink = new KafkaTableSink();
+            //result.writeToSink(sink);
 
             env.execute();
         } catch (Exception e) {
