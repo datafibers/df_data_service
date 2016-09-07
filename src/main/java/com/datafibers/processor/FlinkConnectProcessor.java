@@ -1,5 +1,6 @@
 package com.datafibers.processor;
 
+import com.datafibers.flinknext.Kafka09JsonTableSink;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
@@ -23,7 +24,7 @@ import java.util.Properties;
  */
 public class FlinkConnectProcessor {
 
-    public void submitFlinkSQL(String groupid, String colNameList, String colSchemaList,
+    public void submitFlinkSQL(String flinkHost, String zookeeperHost, String groupid, String colNameList, String colSchemaList,
                                String inputTopic, String outputTopic, String transSql) {
         String resultFile = "/home/vagrant/test.txt";
         //TODO number of parallel and Remote cluster support
@@ -32,13 +33,34 @@ public class FlinkConnectProcessor {
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "localhost:9092"); //9092 for local port and 6123 for remote port
+        properties.setProperty("bootstrap.servers", flinkHost); //9092 for local port and 6123 for remote port
         // only required for Kafka 0.9
-        properties.setProperty("zookeeper.connect", "localhost:2181");
+        properties.setProperty("zookeeper.connect", zookeeperHost);
         properties.setProperty("group.id", groupid);
 
         String[] fieldNames = colNameList.split(",");
-        Class<?>[] fieldTypes = new Class<?>[] {String.class, String.class};
+
+        String[] fields = colSchemaList.split(",");
+        Class<?>[] fieldTypes = new Class[fields.length];
+        String temp;
+        for (int i = 0; i < fields.length; i++) {
+            try {
+
+                switch (fields[i].trim().toLowerCase()) {
+                    case "string":
+                        temp = "java.lang.String";
+                        break;
+                    case "date":
+                        temp = "java.util.Date";
+                        break;
+
+                    default: temp = fields[i].trim();
+                }
+                fieldTypes[i] = Class.forName(temp);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
 
         KafkaJsonTableSource kafkaTableSource =
                 new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
@@ -51,7 +73,7 @@ public class FlinkConnectProcessor {
         try {
             // create a TableSink
             FixedPartitioner partition =  new FixedPartitioner();
-            Kafka09JsonTableSink sink = new KaKafka09JsonTableSink(outputTopic, properties, partition);
+            Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
             result.writeToSink(sink);
 
             env.execute();
