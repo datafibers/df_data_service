@@ -23,10 +23,13 @@ public final class ConstantApp {
     public static final String DF_TRANSFOMER_REST_URL_WILD = "/api/df/ps*";
     public static final String DF_TRANSFOMER_REST_URL_WITH_ID = DF_TRANSFOMER_REST_URL + "/:id";
 
-    // KAFKA CONNECT endpoint URLs
+    // Kafka CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
     public static final String KAFKA_CONNECT_PLUGIN_REST_URL = "/connector-plugins";
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
+
+    // Kafka Other default settings
+    public static String DF_TRANSFOMER_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
 
     // HTTP req/res constants
     public static final String CONTENT_TYPE = "content-type";
@@ -53,14 +56,18 @@ public final class ConstantApp {
     public enum DF_CONNECT_TYPE {
         KAFKA_SOURCE, //Kafka Connector import data into Kafka
         KAFKA_SINK, //Kafka Connector export data out of Kafka
-        FLINK_TRANS, //Flink transformation on single topics
-        FLINK_JOINS, //Flink transformation on multiple topics
         EVENTBUS_SOURCE, //The plugin import data into Vertx Event Bus
         EVENTBUS_SINK, //The plugin export data out of Vertx Event Bus
         HDFS_SOURCE, //The plugin import data into HDFS
         HDFS_SINK, //The plugin export data out of HDFS
         HIVE_SOURCE, //The plugin import data into Hive
         HIVE_SINK, //The plugin export data out of Hive
+        FLINK_TRANS, //Flink transformation on single topics
+        FLINK_JOINS, //Flink transformation on multiple topics
+        SPARK_TRANS, //Flink transformation on single topics
+        SPARK_JOINS, //Flink transformation on multiple topics
+        HIVE_TRANS, //Flink transformation on single topics
+        HIVE_JOINS, //Flink transformation on multiple topics
         NONE
     }
 

@@ -1,6 +1,7 @@
 package com.datafibers.processor;
 
 import com.datafibers.flinknext.Kafka09JsonTableSink;
+import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
@@ -8,6 +9,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
@@ -17,25 +20,25 @@ import java.util.Properties;
  *     "group.id":"consumer3",
  *     "column.name.list":"symbol,name",
  *     "column.schema.list":"string,string",
- *     "topic.to.query":"finance",
+ *     "topic.for.query":"finance",
  *     "topic.for.result":"stock",
  *     "trans.sql":"SELECT STREAM symbol, name FROM finance"
  * }
  */
 public class FlinkConnectProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkConnectProcessor.class);
 
-    public void submitFlinkSQL(String flinkHost, String zookeeperHost, String groupid, String colNameList, String colSchemaList,
-                               String inputTopic, String outputTopic, String transSql) {
-        String resultFile = "/home/vagrant/test.txt";
-        //TODO number of parallel and Remote cluster support
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
-        //StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("localhost",9092).setParallelism(1);
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+    public static void submitFlinkSQL(StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
+                                      String kafkaHostPort, String groupid, String colNameList,
+                                      String colSchemaList, String inputTopic, String outputTopic,
+                                      String transSql) {
+
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
 
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", flinkHost); //9092 for local port and 6123 for remote port
+        properties.setProperty("bootstrap.servers", kafkaHostPort); //9092 for kafka server
         // only required for Kafka 0.9
-        properties.setProperty("zookeeper.connect", zookeeperHost);
+        properties.setProperty("zookeeper.connect", zookeeperHostPort);
         properties.setProperty("group.id", groupid);
 
         String[] fieldNames = colNameList.split(",");
@@ -53,7 +56,12 @@ public class FlinkConnectProcessor {
                     case "date":
                         temp = "java.util.Date";
                         break;
-
+                    case "integer":
+                        temp = "java.lang.Integer";
+                        break;
+                    case "long":
+                        temp = "java.lang.Long";
+                        break;
                     default: temp = fields[i].trim();
                 }
                 fieldTypes[i] = Class.forName(temp);
@@ -76,7 +84,8 @@ public class FlinkConnectProcessor {
             Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
             result.writeToSink(sink);
 
-            env.execute();
+            JobExecutionResult jres = flinkEnv.execute();
+            LOG.debug("Flink Job ID is - " + jres.getJobID());
         } catch (Exception e) {
             e.printStackTrace();
         }

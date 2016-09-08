@@ -40,7 +40,7 @@
             <version>${vertx.version}</version>
         </dependency>
 
-        <!-- flink connector jars - Don't use a SNAPSHOT version-->
+        <!-- Flink Table API and Client -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-table_2.10</artifactId>
@@ -48,17 +48,23 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_2.10</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+
+        <!-- Flink Connector for Kafka -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-kafka-0.9_2.10</artifactId>
             <version>1.1.1</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.flink/flink-connector-kafka-base_2.11 -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-kafka-base_2.11</artifactId>
             <version>1.1.1</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.hubrick.vertx/vertx-rest-client -->
+        <!-- None Blocking REST Client of Vertx -->
         <dependency>
             <groupId>com.hubrick.vertx</groupId>
             <artifactId>vertx-rest-client</artifactId>
@@ -308,7 +314,7 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Main-Class>com.datafibers.service.DFProcessingService</Main-Class>
+                                        <Main-Class>com.datafibers.service.DFDataProcessor</Main-Class>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>

@@ -1,11 +1,9 @@
 {
   "debug.mode":"true",
-  "http.port.df.producer":8080,
-  "http.port.df.transformer":8070,
+  "http.port.df.processor":8080,
 
   "db.name":"df",
-  "db.collection.name.df.producer":"df_prod",
-  "db.collection.name.df.transformer":"df_tran",
+  "db.collection.name":"df_collect",
   "repo.connection.string":"mongodb://localhost:27017",
 
   "kafka.server.port":9092,
@@ -16,7 +14,8 @@
 
   "transform.engine.flink.enable":"true",
   "flink.servers.host":"localhost",
+  "flink.server.port":6123,
 
-  "zookeeprt.server.host":"localhost",
+  "zookeeper.server.host":"localhost",
   "zookeeper.server.port":2181
 }
