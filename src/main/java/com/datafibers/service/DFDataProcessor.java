@@ -100,7 +100,7 @@ public class DFDataProcessor extends AbstractVerticle {
          * Get all application configurations
          **/
         // Get generic variables
-        this.COLLECTION = config().getString("db.collection.name", "df_collect");
+        this.COLLECTION = config().getString("db.collection.name", "df_processor");
         // Get Connects config
         this.kafka_connect_enabled = config().getBoolean("kafka.connect.enable", Boolean.TRUE);
         this.kafka_connect_rest_host = config().getString("kafka.connect.rest.host", "localhost");
@@ -183,27 +183,32 @@ public class DFDataProcessor extends AbstractVerticle {
         });
 
         // Connects Rest API definition
-        router.options(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::corsHandle);
-        router.options(ConstantApp.DF_PRODUCER_REST_URL).handler(this::corsHandle);
-        router.get(ConstantApp.DF_PRODUCER_REST_URL).handler(this::getAll);
-        router.get(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::getOne);
-        router.route(ConstantApp.DF_PRODUCER_REST_URL_WILD).handler(BodyHandler.create());
+        router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
+        router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::getAllProcessor);
 
-        router.get(ConstantApp.DF_PRODUCER_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
-        router.post(ConstantApp.DF_PRODUCER_REST_URL).handler(this::addOneConnects); // Kafka Connect Forward
-        router.put(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::updateOneConnects); // Kafka Connect Forward
-        router.delete(ConstantApp.DF_PRODUCER_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Kafka Connect Forward
+        // Connects Rest API definition
+        router.options(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_CONNECTS_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_CONNECTS_REST_URL).handler(this::getAllConnects);
+        router.get(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_CONNECTS_REST_URL_WILD).handler(BodyHandler.create());
+
+        router.get(ConstantApp.DF_CONNECTS_INSTALLED_CONNECTS_REST_URL).handler(this::getAllInstalledConnects);
+        router.post(ConstantApp.DF_CONNECTS_REST_URL).handler(this::addOneConnects); // Kafka Connect Forward
+        router.put(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::updateOneConnects); // Kafka Connect Forward
+        router.delete(ConstantApp.DF_CONNECTS_REST_URL_WITH_ID).handler(this::deleteOneConnects); // Kafka Connect Forward
 
         // Transforms Rest API definition
-        router.options(ConstantApp.DF_TRANSFOMER_REST_URL_WITH_ID).handler(this::corsHandle);
-        router.options(ConstantApp.DF_TRANSFOMER_REST_URL).handler(this::corsHandle);
-        router.get(ConstantApp.DF_TRANSFOMER_REST_URL).handler(this::getAll);
-        router.get(ConstantApp.DF_TRANSFOMER_REST_URL_WITH_ID).handler(this::getOne);
-        router.route(ConstantApp.DF_TRANSFOMER_REST_URL_WILD).handler(BodyHandler.create());
+        router.options(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::corsHandle);
+        router.options(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::corsHandle);
+        router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllTransforms);
+        router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_TRANSFORMS_REST_URL_WILD).handler(BodyHandler.create());
 
-        router.post(ConstantApp.DF_TRANSFOMER_REST_URL).handler(this::addOneTransforms); // Flink Forward
-        router.put(ConstantApp.DF_TRANSFOMER_REST_URL_WITH_ID).handler(this::updateOneTransforms); // Flink Forward
-        router.delete(ConstantApp.DF_TRANSFOMER_REST_URL_WITH_ID).handler(this::deleteOneTransforms); // Flink Forward
+        router.post(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::addOneTransforms); // Flink Forward
+        router.put(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::updateOneTransforms); // Flink Forward
+        router.delete(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::deleteOneTransforms); // Flink Forward
 
         // Create the HTTP server and pass the "accept" method to the request handler.
         vertx.createHttpServer().requestHandler(router::accept)
@@ -267,7 +272,21 @@ public class DFDataProcessor extends AbstractVerticle {
      * Generic getAll method for REST API End Point
      * @param routingContext
      */
-    private void getAll(RoutingContext routingContext) {
+    private void getAll(RoutingContext routingContext, String connectorCategoryFilter) {
+        mongo.find(COLLECTION, new JsonObject().put("connectorCategory", connectorCategoryFilter), results -> {
+            List<JsonObject> objects = results.result();
+            List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
+            routingContext.response()
+                    .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                    .end(Json.encodePrettily(jobs));
+        });
+    }
+
+    /**
+     * This is for fetch both connects and transforms
+     * @param routingContext
+     */
+    private void getAllProcessor(RoutingContext routingContext) {
         mongo.find(COLLECTION, new JsonObject(), results -> {
             List<JsonObject> objects = results.result();
             List<DFJobPOPJ> jobs = objects.stream().map(DFJobPOPJ::new).collect(Collectors.toList());
@@ -275,6 +294,14 @@ public class DFDataProcessor extends AbstractVerticle {
                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                     .end(Json.encodePrettily(jobs));
         });
+    }
+
+    private void getAllConnects(RoutingContext routingContext) {
+        this.getAll(routingContext, "CONNECT");
+    }
+
+    private void getAllTransforms(RoutingContext routingContext) {
+        this.getAll(routingContext, "TRANSFORM");
     }
 
     /**
@@ -318,7 +345,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     this.zookeeper_server_host_and_port,
                     this.kafka_server_host_and_port,
                     HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                            ConstantApp.DF_TRANSFOMER_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
                     dfJob.getConnectorConfig().get("column.name.list"),
                     dfJob.getConnectorConfig().get("column.schema.list"),
                     dfJob.getConnectorConfig().get("topic.for.query"),
@@ -529,6 +556,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                                 .put("taskId", "0")
                                                 .put("connector", connectName)
                                                 .put("connectorType", resConnectType)
+                                                .put("connectorCategory", "CONNECT")
                                                 .put("status", resStatus)
                                                 .put("jobConfig", new JsonObject().put("comments", "This is imported from Kafka Connect.").toString())
                                                 .put("connectorConfig", resConfig.getObject().toString())

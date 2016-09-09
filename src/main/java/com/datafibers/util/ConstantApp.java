@@ -11,17 +11,20 @@ public final class ConstantApp {
     public static final Boolean REST_CLIENT_KEEP_LIVE = true;
     public static final int REST_CLIENT_MAX_POOL_SIZE = 500;
 
-    // DF Producer REST endpoint URLs
-    public static final String DF_PRODUCER_REST_URL = "/api/df/ps";
-    public static final String DF_PRODUCER_INSTALLED_CONNECTS_REST_URL = "/api/df/installed_connects";
-    public static final String DF_PRODUCER_REST_URL_WILD = "/api/df/ps*";
-    public static final String DF_PRODUCER_REST_URL_WITH_ID = DF_PRODUCER_REST_URL + "/:id";
+    // DF REST endpoint URLs for all processors, connects and transforms
+    public static final String DF_PROCESSOR_REST_URL = "/api/df/processor";
 
-    // DF Transformer REST endpoint URLs
-    public static final String DF_TRANSFOMER_REST_URL = "/api/df/tr";
-    public static final String DF_TRANSFOMER_INSTALLED_CONNECTS_REST_URL = "/api/tr/installed_connects";
-    public static final String DF_TRANSFOMER_REST_URL_WILD = "/api/df/ps*";
-    public static final String DF_TRANSFOMER_REST_URL_WITH_ID = DF_TRANSFOMER_REST_URL + "/:id";
+    // DF Connects REST endpoint URLs
+    public static final String DF_CONNECTS_REST_URL = "/api/df/ps";
+    public static final String DF_CONNECTS_INSTALLED_CONNECTS_REST_URL = "/api/df/installed_connects";
+    public static final String DF_CONNECTS_REST_URL_WILD = "/api/df/ps*";
+    public static final String DF_CONNECTS_REST_URL_WITH_ID = DF_CONNECTS_REST_URL + "/:id";
+
+    // DF Transforms REST endpoint URLs
+    public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
+    public static final String DF_TRANSFORMS_INSTALLED_CONNECTS_REST_URL = "/api/tr/installed_transforms";
+    public static final String DF_TRANSFORMS_REST_URL_WILD = "/api/df/ps*";
+    public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
 
     // Kafka CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";
@@ -29,7 +32,7 @@ public final class ConstantApp {
     public static String KAFKA_CONNECT_PLUGIN_CONFIG = "/connectors/CONNECTOR_NAME_PLACEHOLDER/config";
 
     // Kafka Other default settings
-    public static String DF_TRANSFOMER_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
+    public static String DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK = "df_trans_flink_group_id";
 
     // HTTP req/res constants
     public static final String CONTENT_TYPE = "content-type";

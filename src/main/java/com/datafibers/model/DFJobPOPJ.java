@@ -4,6 +4,7 @@ import com.datafibers.util.ConstantApp;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ public class DFJobPOPJ {
     private String name; // Name of the job
     private String connector; // Name of the connector used. This will maps to Kafka Connect name attribute.
     private ConstantApp.DF_CONNECT_TYPE connectorType; // Identify proper connector type from enum
+    private String connectorCategory;
     private String description; // Description about job and connector
     private String status; // Job/Connector status
 
@@ -37,6 +39,7 @@ public class DFJobPOPJ {
         this.name = name;
         this.connector = connector;
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
+        this.connectorCategory = findConnectorCategory(connector_type);
         this.description = description;
         this.status = status;
         this.id = "";
@@ -50,6 +53,7 @@ public class DFJobPOPJ {
         this.name = name;
         this.connector = connector;
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
+        this.connectorCategory = findConnectorCategory("");
         this.description = "";
         this.status = status;
         this.id = "";
@@ -61,6 +65,7 @@ public class DFJobPOPJ {
         this.name = name;
         this.connector = connector;
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.NONE;
+        this.connectorCategory = findConnectorCategory("");
         this.description = "";
         this.status = status;
         this.id = "";
@@ -74,6 +79,7 @@ public class DFJobPOPJ {
         this.name = json.getString("name");
         this.connector = json.getString("connector");
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(json.getString("connectorType"));
+        this.connectorCategory = findConnectorCategory(json.getString("connectorType"));
         this.description = json.getString("description");
         this.status = json.getString("status");
         this.id = json.getString("_id");
@@ -120,6 +126,7 @@ public class DFJobPOPJ {
                 .put("taskId", taskId)
                 .put("connector", connector)
                 .put("connectorType", connectorType)
+                .put("connectorCategory", connectorCategory)
                 .put("description", description)
                 .put("status", status)
                 .put("jobConfig", mapToJsonString(jobConfig))
@@ -142,6 +149,9 @@ public class DFJobPOPJ {
             return json;
     }
 
+    /*
+     * All below get method is needed to render json to rest. Do not override.
+     */
     public String getName() {
         return name;
     }
@@ -150,8 +160,19 @@ public class DFJobPOPJ {
         return connector;
     }
 
+    public String getConnectorCategory() {
+        return connectorCategory;
+    }
+
     public String getConnectorType() {
         return connectorType.name();
+    }
+
+    public String findConnectorCategory(String ct) {
+        if(StringUtils.indexOfAny(ct, new String[]{"TRANS", "JOINS"}) == -1) {
+            return "CONNECT";
+        }
+        return "TRANSFORM";
     }
 
     public String getDescription() {
@@ -190,6 +211,11 @@ public class DFJobPOPJ {
 
     public DFJobPOPJ setConnectorType(String connector_type) {
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
+        return this;
+    }
+
+    public DFJobPOPJ setConnectorCategory(String cc) {
+        this.connectorCategory = cc;
         return this;
     }
 
@@ -240,4 +266,6 @@ public class DFJobPOPJ {
         }
         return json;
     }
+
+
 }

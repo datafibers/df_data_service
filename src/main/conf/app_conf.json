@@ -3,7 +3,7 @@
   "http.port.df.processor":8080,
 
   "db.name":"df",
-  "db.collection.name":"df_collect",
+  "db.collection.name":"df_processor",
   "repo.connection.string":"mongodb://localhost:27017",
 
   "kafka.server.port":9092,
