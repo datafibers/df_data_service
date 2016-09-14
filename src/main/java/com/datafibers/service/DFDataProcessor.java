@@ -26,18 +26,20 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -92,10 +94,18 @@ public class DFDataProcessor extends AbstractVerticle {
                 System.exit(0);
             }
         }
+
     }
 
     @Override
     public void start(Future<Void> fut) {
+        try {
+            InetAddress ip = InetAddress.getLocalHost();
+            LOG.info("Web Admin Console is started @ http://" + ip + ":" +
+                    config().getInteger("http.port.df.processor", 8080) + "/admin");
+        } catch (UnknownHostException e) {
+            LOG.error("NetworkHostException", e.getCause());
+        }
         /**
          * Get all application configurations
          **/
@@ -175,12 +185,8 @@ public class DFDataProcessor extends AbstractVerticle {
         // Create a router object.
         Router router = Router.router(vertx);
 
-        // Bind "/" to our hello message.
-        router.route("/").handler(routingContext -> {
-            HttpServerResponse response = routingContext.response();
-            response.putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.TEXT_HTML)
-                    .end("<h1>Hello from DF producer service</h1>");
-        });
+        // Bind web ui
+        router.route("/admin/*").handler(StaticHandler.create());
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
