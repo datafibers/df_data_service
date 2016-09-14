@@ -1,8 +1,8 @@
-# DF Processing Service
+# DF Data Processor Service
 
-This project has two [Vertx](http://www.vertx.io) defined to deal with stream ETL (Extract, Transform, and Load).
-* **DF Producer** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
-* **DF Transformer** is to leverage streaming processing engine, such as Apache Flink, for data transformation.
+This project has two components defined to deal with stream ETL (Extract, Transform, and Load).
+* **Connects** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
+* **Transforms** is to leverage streaming processing engine, such as Apache Flink, for data transformation.
 
 ## Building
 
@@ -26,15 +26,10 @@ The application is packaged as a _fat jar_, using the
 Once packaged, just launch the _fat jar_ as follows:
 
 ```
-java -jar df-processing-service-1.0-SNAPSHOT-fat.jar <START_OPTION>
+java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
 ```
-**<START_OPTION>** values are as follows
-* **"s-all"**: Deploy both Producer & Transform vertical as single mode.
-* **"s-c"**: Deploy Producer vertical as single mode.
-* **"s-t"**: Deploy Transform vertical as single mode.
-* **"c-all**": Deploy both Producer & Transform vertical as cluster mode.
-* **"c-c"**: Deploy only Producer vertical as cluster mode.
-* **"c-t"**: Deploy only Transform vertical as cluster mode.
+**<MORE_START_OPTION>** values are as follows
+* **"cluster"**: Deploy as cluster mode.
 
 
 ## Todo
