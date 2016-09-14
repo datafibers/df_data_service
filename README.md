@@ -35,7 +35,9 @@ java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
 ## Todo
 - [x] Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
 - [ ] Add to generic function to do connector validation before creation
+- [ ] Add submit job actions
 - [x] Fetch all installed connectors/plugins in regularly frequency
-- [x] Need to report connector|job status
+- [x] Need to report connector or job status
 - [x] Need an initial method to import all available|paused|running connectors from kafka connect
 - [ ] Add Flink Table API engine
+- [ ] Add Spark Structure Streaming

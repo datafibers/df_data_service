@@ -33,6 +33,8 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.runtime.minicluster.LocalFlinkMiniCluster;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +59,8 @@ public class DFDataProcessor extends AbstractVerticle {
     public static String COLLECTION;
     private MongoClient mongo;
     private RestClient rc;
+    // TODO remove mini cluster later
+    private final LocalFlinkMiniCluster miniCluster = new LocalFlinkMiniCluster(new Configuration(), false);
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -152,8 +156,10 @@ public class DFDataProcessor extends AbstractVerticle {
         }
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
-            //TODO number of parallel and Remote cluster support
-            if (config().getBoolean("debug.mode", Boolean.TRUE)) {
+            // TODO remove local cluster
+            this.miniCluster.start();
+            // TODO number of parallel and Remote cluster support
+            if (config().getBoolean("debug.mode", Boolean.FALSE)) {
                 env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
             } else {
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
@@ -339,12 +345,13 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void addOneTransforms(RoutingContext routingContext) {
         // Get request as object
+        LOG.info("received the body is:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         // Set initial status for the job
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
-        LOG.info("received the body is:" + routingContext.getBodyAsString());
 
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK
+
+        // Start Flink job Forward only if it is enabled and Connector type is FLINK - TODO Need seperate check form vertx because it is blocking
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
             //submit flink sql TODO create output topic if not exsit
             FlinkConnectProcessor.submitFlinkSQL(env,
