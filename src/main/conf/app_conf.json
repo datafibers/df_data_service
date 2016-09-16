@@ -15,6 +15,9 @@
   "transform.engine.flink.enable":"true",
   "flink.servers.host":"localhost",
   "flink.server.port":6123,
+  "flink.trans.pool.size.per.job":5,
+  "flink.trans.client.timeout":120000,
+  "flink.temp.jobid.folder":"temp_flink_job_id",
 
   "zookeeper.server.host":"localhost",
   "zookeeper.server.port":2181

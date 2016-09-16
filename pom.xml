@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <vertx.version>3.3.2</vertx.version>
         <vertx.rest.client.version>2.1.0</vertx.rest.client.version>
-        <flink.version>1.1.1</flink.version>
+        <flink.version>1.1.2</flink.version>
     </properties>
 
     <dependencies>
@@ -44,7 +44,7 @@
         <!-- Flink Table API and Client -->
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table_2.10</artifactId>
+            <artifactId>flink-table_2.11</artifactId>
             <version>${flink.version}</version>
         </dependency>
         <dependency>
@@ -64,7 +64,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-streaming-java_2.10</artifactId>
+            <artifactId>flink-streaming-java_2.11</artifactId>
             <version>${flink.version}</version>
         </dependency>
         <dependency>

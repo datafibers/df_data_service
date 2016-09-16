@@ -161,7 +161,7 @@ public class DFJobPOPJ {
     }
 
     public String getConnectorCategory() {
-        return connectorCategory;
+        return findConnectorCategory(getConnector());
     }
 
     public String getConnectorType() {
@@ -211,6 +211,7 @@ public class DFJobPOPJ {
 
     public DFJobPOPJ setConnectorType(String connector_type) {
         this.connectorType = ConstantApp.DF_CONNECT_TYPE.valueOf(connector_type);
+        this.connectorCategory = findConnectorCategory(connector_type);
         return this;
     }
 
@@ -246,6 +247,11 @@ public class DFJobPOPJ {
 
     public DFJobPOPJ setJobConfig(HashMap<String, String> job_config) {
         this.jobConfig = job_config;
+        return this;
+    }
+
+    public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
+        this.jobConfig.put("FLINK_JOB_ID", jobID);
         return this;
     }
 

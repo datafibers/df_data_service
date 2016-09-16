@@ -1,7 +1,7 @@
 package com.datafibers.service;
 
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.processor.FlinkConnectProcessor;
+import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
@@ -21,10 +21,7 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import io.vertx.core.*;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -33,13 +30,13 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
-import org.apache.flink.configuration.Configuration;
-import org.apache.flink.runtime.minicluster.LocalFlinkMiniCluster;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.tools.cmd.gen.AnyVals;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -59,8 +56,6 @@ public class DFDataProcessor extends AbstractVerticle {
     public static String COLLECTION;
     private MongoClient mongo;
     private RestClient rc;
-    // TODO remove mini cluster later
-    private final LocalFlinkMiniCluster miniCluster = new LocalFlinkMiniCluster(new Configuration(), false);
 
     // Connects attributes
     private static Boolean kafka_connect_enabled;
@@ -156,14 +151,12 @@ public class DFDataProcessor extends AbstractVerticle {
         }
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
-            // TODO remove local cluster
-            this.miniCluster.start();
             // TODO number of parallel and Remote cluster support
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
                 env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
             } else {
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port).setParallelism(1);
+                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar").setParallelism(1);
             }
         }
 
@@ -192,7 +185,7 @@ public class DFDataProcessor extends AbstractVerticle {
         Router router = Router.router(vertx);
 
         // Bind web ui
-        router.route("/admin/*").handler(StaticHandler.create());
+        router.route("/admin/*").handler(StaticHandler.create().setCachingEnabled(false));
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
@@ -348,25 +341,66 @@ public class DFDataProcessor extends AbstractVerticle {
         LOG.info("received the body is:" + routingContext.getBodyAsString());
         final DFJobPOPJ dfJob = Json.decodeValue(routingContext.getBodyAsString(), DFJobPOPJ.class);
         // Set initial status for the job
+        LOG.info("rebuilt object as:" + dfJob.toJson());
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
-
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK - TODO Need seperate check form vertx because it is blocking
+        // Start Flink job Forward only if it is enabled and Connector type is FLINK -
+        // Separate check form vertx because it is blocking
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
-            //submit flink sql TODO create output topic if not exsit
-            FlinkConnectProcessor.submitFlinkSQL(env,
-                    this.zookeeper_server_host_and_port,
-                    this.kafka_server_host_and_port,
-                    HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                    dfJob.getConnectorConfig().get("column.name.list"),
-                    dfJob.getConnectorConfig().get("column.schema.list"),
-                    dfJob.getConnectorConfig().get("topic.for.query"),
-                    dfJob.getConnectorConfig().get("topic.for.result"),
-                    dfJob.getConnectorConfig().get("trans.sql"));
-        }
+            // Submit flink sql TODO create output topic if not exist
 
-        mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
+            /* TODO Since Flink does not return Job ID immediately for streaming. We use following workaround
+             * 1. Submit Flink job
+             * 3. Capture screen to string buffer
+             * 3. Capture Job ID for the string separately
+             */
+            String uuid = dfJob.hashCode() + "_" +
+                    dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
+            // Create a stream to hold the output
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintStream ps = new PrintStream(baos);
+            // IMPORTANT: Save the old System.out!
+            PrintStream old = System.out;
+
+            // Submit Flink through client in vertx worker thread and terminate it once the job is launched.
+            WorkerExecutor executor_flink = vertx.createSharedWorkerExecutor(dfJob.getName(),
+                    config().getInteger("flink.trans.pool.size.per.job", 5),
+                    config().getInteger("flink.trans.client.timeout", 10000));
+            // Submit Flink job in separate thread
+            executor_flink.executeBlocking(future -> {
+                // Tell Java to use your special stream
+                System.setOut(ps);
+                // Call some blocking API that takes a significant amount of time to return
+                String result = FlinkTransformProcessor.submitFlinkSQL(env,
+                        this.zookeeper_server_host_and_port,
+                        this.kafka_server_host_and_port,
+                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                        dfJob.getConnectorConfig().get("column.name.list"),
+                        dfJob.getConnectorConfig().get("column.schema.list"),
+                        dfJob.getConnectorConfig().get("topic.for.query"),
+                        dfJob.getConnectorConfig().get("topic.for.result"),
+                        dfJob.getConnectorConfig().get("trans.sql"), uuid);
+
+                future.complete(result);
+            }, res -> {
+                LOG.debug("@@@@@@@BOLOCKING CODE IS TERMINATE?FINISHED");
+            });
+
+            long timerID = vertx.setTimer(8000, id -> {
+                // Put things back
+                System.out.flush();
+                System.setOut(old);
+                // Show what happened
+                String jobID = StringUtils.substringBetween(baos.toString(),
+                        "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
+                System.out.println("@@FLINK JOB_ID Submitted - " + jobID);
+                dfJob.setFlinkIDToJobConfig(jobID); //TODO does not set yet!!
+                System.out.println("@@@@@@@@@@@new dfJob" + dfJob.toJson().toString());
+            });
+
+        }
+            mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
                 .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
                 .end(Json.encodePrettily(dfJob.setId(r.result()))));
@@ -643,7 +677,6 @@ public class DFDataProcessor extends AbstractVerticle {
         mongo.find(COLLECTION, new JsonObject().put("connectorType", new JsonObject().put("$in", list)), result -> {
                     if (result.succeeded()) {
                         for (JsonObject json : result.result()) {
-                            LOG.debug(json.encodePrettily());
                             String connectName = json.getString("connector");
                             String statusRepo = json.getString("status");
                             // Get task status

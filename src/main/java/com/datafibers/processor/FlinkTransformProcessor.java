@@ -1,6 +1,7 @@
 package com.datafibers.processor;
 
 import com.datafibers.flinknext.Kafka09JsonTableSink;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
@@ -12,7 +13,13 @@ import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Properties;
+
+import static java.lang.Thread.sleep;
 
 /**
  * Flink Connect Config Sample
@@ -25,13 +32,13 @@ import java.util.Properties;
  *     "trans.sql":"SELECT STREAM symbol, name FROM finance"
  * }
  */
-public class FlinkConnectProcessor {
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkConnectProcessor.class);
+public class FlinkTransformProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkTransformProcessor.class);
 
-    public static void submitFlinkSQL(StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
+    public static String submitFlinkSQL(StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
                                       String kafkaHostPort, String groupid, String colNameList,
                                       String colSchemaList, String inputTopic, String outputTopic,
-                                      String transSql) {
+                                      String transSql, String jobName) {
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(flinkEnv);
 
@@ -83,11 +90,11 @@ public class FlinkConnectProcessor {
             FixedPartitioner partition =  new FixedPartitioner();
             Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
             result.writeToSink(sink);
-
-            JobExecutionResult jres = flinkEnv.execute();
-            LOG.debug("Flink Job ID is - " + jres.getJobID());
+            JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + jobName);
+            return jres.getJobID().toString();
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return null;
     }
 }
