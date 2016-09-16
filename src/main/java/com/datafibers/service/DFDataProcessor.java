@@ -395,7 +395,7 @@ public class DFDataProcessor extends AbstractVerticle {
                 String jobID = StringUtils.substringBetween(baos.toString(),
                         "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
                 System.out.println("@@FLINK JOB_ID Submitted - " + jobID);
-                dfJob.setFlinkIDToJobConfig(jobID); //TODO does not set yet!!
+                dfJob.setFlinkIDToJobConfig(jobID); //TODO will update the repo later
                 System.out.println("@@@@@@@@@@@new dfJob" + dfJob.toJson().toString());
             });
 

@@ -251,7 +251,7 @@ public class DFJobPOPJ {
     }
 
     public DFJobPOPJ setFlinkIDToJobConfig(String jobID) {
-        this.jobConfig.put("FLINK_JOB_ID", jobID);
+        this.jobConfig.put("flink.submit.job.id", jobID);
         return this;
     }
 
