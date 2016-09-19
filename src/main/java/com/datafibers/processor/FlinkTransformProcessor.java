@@ -2,8 +2,6 @@ package com.datafibers.processor;
 
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
-import com.datafibers.util.ConstantApp;
-import com.datafibers.util.HelpFunc;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
@@ -62,8 +60,7 @@ public class FlinkTransformProcessor {
                                       StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
                                       String kafkaHostPort, String groupid, String colNameList,
                                       String colSchemaList, String inputTopic, String outputTopic,
-                                      String transSql, MongoClient mongoClient, String mongoCOLLECTION,
-                                      RoutingContext routingContext) {
+                                      String transSql, MongoClient mongoClient, String mongoCOLLECTION) {
 
         String uuid = dfJob.hashCode() + "_" +
                 dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
@@ -152,12 +149,7 @@ public class FlinkTransformProcessor {
             mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
                     new JsonObject().put("$set", dfJob.toJson()), v -> {
                         if (v.failed()) {
-                            routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
-                                    .end(HelpFunc.errorMsg(133, "update Flink JOb_ID Failed."));
-                        } else {
-                            routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
-                                    ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
-                                    .end("Flink JOb_ID is updated at flink.submit.job.id in Job Config.");
+                            LOG.error("update Flink JOb_ID Failed.", v.cause());
                         }
                     }
             );

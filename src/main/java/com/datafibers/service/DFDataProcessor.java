@@ -358,7 +358,7 @@ public class DFDataProcessor extends AbstractVerticle {
                     dfJob.getConnectorConfig().get("topic.for.query"),
                     dfJob.getConnectorConfig().get("topic.for.result"),
                     dfJob.getConnectorConfig().get("trans.sql"),
-                    mongo, COLLECTION, routingContext);
+                    mongo, COLLECTION);
         }
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
