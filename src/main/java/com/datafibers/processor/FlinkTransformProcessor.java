@@ -6,7 +6,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
@@ -126,12 +125,14 @@ public class FlinkTransformProcessor {
                 result.writeToSink(sink);
                 JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
                 future.complete(jres);
+
             } catch (Exception e) {
                 LOG.error("Flink Submit Exception", e.getCause());
             }
 
         }, res -> {
             LOG.debug("@@@@@@@BOLOCKING CODE IS TERMINATE?FINISHED");
+
         });
 
         long timerID = vertx.setTimer(8000, id -> {

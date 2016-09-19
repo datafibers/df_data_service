@@ -1,7 +1,19 @@
 var myApp = angular.module('myApp', ['ng-admin']);
 myApp.config(['NgAdminConfigurationProvider', function (nga) {
+customHeaderTemplate =
+'<div class="navbar-header">' +
+    '<a class="navbar-brand" href="#" ng-click="appController.displayHome()">' +
+        'DataFibers Web Console' +
+    '</a>' +
+'</div>' +
+'<p class="navbar-text navbar-right">' +
+    '<a href="https://github.com/datafibers/df_data_processor/blob/master/src/main/resources/webroot/admin/admin.js">' +
+        '<img src="https://raw.githubusercontent.com/datafibers/datafibers.github.io/master/img/logos/logo_blue.png" width="24" height="28">' +
+    '</a>' +
+'</p>';
     // create an admin application
     var admin = nga.application().title('DataFibers Admin Console').baseApiUrl('http://localhost:8080/api/df/');
+    admin.header(customHeaderTemplate);
 	var processor = nga.entity('processor').label('ALL');
     var producer = nga.entity('ps').label('CONNECTS');
 	var transformer = nga.entity('tr').label('TRANSFORMS');	
