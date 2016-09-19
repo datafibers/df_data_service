@@ -170,10 +170,8 @@ public class DFJobPOPJ {
 
     public String findConnectorCategory(String ct) {
         if(StringUtils.indexOfAny(ct, new String[]{"TRANS", "JOINS"}) == -1) {
-            System.out.println("RETURNING CONNECT");
             return "CONNECT";
         }
-        System.out.println("RETURNING TRANSFORM");
         return "TRANSFORM";
     }
 
