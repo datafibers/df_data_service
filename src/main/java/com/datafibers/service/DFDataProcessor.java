@@ -344,61 +344,21 @@ public class DFDataProcessor extends AbstractVerticle {
         LOG.info("rebuilt object as:" + dfJob.toJson());
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK -
-        // Separate check form vertx because it is blocking
+        // Start Flink job Forward only if it is enabled and Connector type is FLINK
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
             // Submit flink sql TODO create output topic if not exist
-
-            /* TODO Since Flink does not return Job ID immediately for streaming. We use following workaround
-             * 1. Submit Flink job
-             * 3. Capture screen to string buffer
-             * 3. Capture Job ID for the string separately
-             */
-            String uuid = dfJob.hashCode() + "_" +
-                    dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
-            // Create a stream to hold the output
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream ps = new PrintStream(baos);
-            // IMPORTANT: Save the old System.out!
-            PrintStream old = System.out;
-
-            // Submit Flink through client in vertx worker thread and terminate it once the job is launched.
-            WorkerExecutor executor_flink = vertx.createSharedWorkerExecutor(dfJob.getName(),
-                    config().getInteger("flink.trans.pool.size.per.job", 5),
-                    config().getInteger("flink.trans.client.timeout", 10000));
-            // Submit Flink job in separate thread
-            executor_flink.executeBlocking(future -> {
-                // Tell Java to use your special stream
-                System.setOut(ps);
-                // Call some blocking API that takes a significant amount of time to return
-                String result = FlinkTransformProcessor.submitFlinkSQL(env,
-                        this.zookeeper_server_host_and_port,
-                        this.kafka_server_host_and_port,
-                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
-                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
-                        dfJob.getConnectorConfig().get("column.name.list"),
-                        dfJob.getConnectorConfig().get("column.schema.list"),
-                        dfJob.getConnectorConfig().get("topic.for.query"),
-                        dfJob.getConnectorConfig().get("topic.for.result"),
-                        dfJob.getConnectorConfig().get("trans.sql"), uuid);
-
-                future.complete(result);
-            }, res -> {
-                LOG.debug("@@@@@@@BOLOCKING CODE IS TERMINATE?FINISHED");
-            });
-
-            long timerID = vertx.setTimer(8000, id -> {
-                // Put things back
-                System.out.flush();
-                System.setOut(old);
-                // Show what happened
-                String jobID = StringUtils.substringBetween(baos.toString(),
-                        "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
-                System.out.println("@@FLINK JOB_ID Submitted - " + jobID);
-                dfJob.setFlinkIDToJobConfig(jobID); //TODO will update the repo later
-                System.out.println("@@@@@@@@@@@new dfJob" + dfJob.toJson().toString());
-            });
-
+            FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
+                    config().getInteger("flink.trans.client.timeout", 10000), env,
+                    this.zookeeper_server_host_and_port,
+                    this.kafka_server_host_and_port,
+                    HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                            ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                    dfJob.getConnectorConfig().get("column.name.list"),
+                    dfJob.getConnectorConfig().get("column.schema.list"),
+                    dfJob.getConnectorConfig().get("topic.for.query"),
+                    dfJob.getConnectorConfig().get("topic.for.result"),
+                    dfJob.getConnectorConfig().get("trans.sql"),
+                    mongo, COLLECTION, routingContext);
         }
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)
