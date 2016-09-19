@@ -155,6 +155,7 @@ public class DFDataProcessor extends AbstractVerticle {
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
                 env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
             } else {
+                // TODO add way deal with hard jar path
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
                         this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar").setParallelism(1);
             }
