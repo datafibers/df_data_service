@@ -3,6 +3,8 @@ package com.datafibers.util;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
+import java.io.*;
+
 /**
  * List of help functions
  */

@@ -153,11 +153,11 @@ public class DFDataProcessor extends AbstractVerticle {
         if(transform_engine_flink_enabled) {
             // TODO number of parallel and Remote cluster support
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
+                env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(2);
             } else {
                 // TODO add way deal with hard jar path
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar").setParallelism(1);
+                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar").setParallelism(2);
             }
         }
 
@@ -349,7 +349,7 @@ public class DFDataProcessor extends AbstractVerticle {
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
             // Submit flink sql TODO create output topic if not exist
             FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
-                    config().getInteger("flink.trans.client.timeout", 10000), env,
+                    config().getInteger("flink.trans.client.timeout", 8000), env,
                     this.zookeeper_server_host_and_port,
                     this.kafka_server_host_and_port,
                     HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
@@ -437,8 +437,19 @@ public class DFDataProcessor extends AbstractVerticle {
                             if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK") &&
                                     connectorConfigString.compareTo(before_update_connectorConfigString) != 0) {
                                 //here update is to cancel exiting job and submit a new one
-                                //TODO implementation;
-
+                                FlinkTransformProcessor.updateFlinkSQL(dfJob, vertx,
+                                        config().getInteger("flink.trans.client.timeout", 8000), env,
+                                        this.zookeeper_server_host_and_port,
+                                        this.kafka_server_host_and_port,
+                                        HelpFunc.coalesce(dfJob.getConnectorConfig().get("group.id"),
+                                                ConstantApp.DF_TRANSFORMS_KAFKA_CONSUMER_GROUP_ID_FOR_FLINK),
+                                        dfJob.getConnectorConfig().get("column.name.list"),
+                                        dfJob.getConnectorConfig().get("column.schema.list"),
+                                        dfJob.getConnectorConfig().get("topic.for.query"),
+                                        dfJob.getConnectorConfig().get("topic.for.result"),
+                                        dfJob.getConnectorConfig().get("trans.sql"),
+                                        mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
+                                        routingContext);
                             } else { // Where there is no change detected
                                 LOG.info("connectorConfig has NO change. Update in local repository only.");
                                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
@@ -509,11 +520,10 @@ public class DFDataProcessor extends AbstractVerticle {
                         return;
                     }
                     DFJobPOPJ dfJob = new DFJobPOPJ(ar.result());
-                    System.out.println("DELETE OBJ" + dfJob.toJson());
                     if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
-
-                        //here delete or kill flink job
-                        //TODO implementation
+                        FlinkTransformProcessor.cancelFlinkSQL(this.flink_server_host + ":" + this.flink_server_port,
+                                dfJob.getJobConfig().get("flink.submit.job.id"),
+                                mongo, COLLECTION, routingContext);
                     } else {
                         mongo.removeDocument(COLLECTION, new JsonObject().put("_id", id),
                                 remove -> routingContext.response().end(id + " is deleted from repository."));

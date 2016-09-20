@@ -2,15 +2,19 @@ package com.datafibers.processor;
 
 import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
+import com.datafibers.util.ConstantApp;
+import com.datafibers.util.HelpFunc;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
+import org.apache.flink.client.CliFrontend;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
@@ -155,6 +159,77 @@ public class FlinkTransformProcessor {
                     }
             );
         });
+
+    }
+
+    /**
+     * This method lunch a local flink CLI and connect specified job manager in order to cancel the job.
+     * Job may not exist. In this case, just delete it for now.
+     * @param jobManagerHostPort The job manager address and port where to send cancel
+     * @param jobID The job ID to cancel for flink job
+     * @param mongoClient repo handler
+     * @param mongoCOLLECTION collection to keep data
+     * @param routingContext response for rest client
+     */
+    public static void cancelFlinkSQL(String jobManagerHostPort, String jobID,
+                                      MongoClient mongoClient, String mongoCOLLECTION, RoutingContext routingContext,
+                                      Boolean cancelRepoAndSendResp) {
+        String id = routingContext.request().getParam("id");
+
+        try {
+            String cancelCMD = "cancel;-m;" + jobManagerHostPort + ";" + jobID;
+            CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+            int retCode = cli.parseParameters(cancelCMD.split(";"));
+            LOG.info("Flink job " + jobID + " is canceled " + ((retCode == 0)? "successful.":"failed."));
+
+            String respMsg = (retCode == 0)? " is deleted from repository.":
+                    " is deleted from repository, but Job_ID is not found.";
+            if(cancelRepoAndSendResp) {
+                mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
+                        remove -> routingContext.response().end(id + respMsg));
+            }
+
+        } catch (IllegalArgumentException ire) {
+            LOG.warn("No Flink job found with ID for cancellation");
+        } catch (Throwable t) {
+            LOG.error("Fatal error while running command line interface.", t.getCause());
+        }
+    }
+
+    public static void cancelFlinkSQL(String jobManagerHostPort, String jobID,
+                                      MongoClient mongoClient, String mongoCOLLECTION, RoutingContext routingContext) {
+        cancelFlinkSQL(jobManagerHostPort, jobID, mongoClient, mongoCOLLECTION, routingContext, Boolean.TRUE);
+    }
+
+    public static void updateFlinkSQL (DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
+                                       StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
+                                       String kafkaHostPort, String groupid, String colNameList,
+                                       String colSchemaList, String inputTopic, String outputTopic,
+                                       String transSql, MongoClient mongoClient, String mongoCOLLECTION,
+                                       String jobManagerHostPort, RoutingContext routingContext) {
+
+        final String id = routingContext.request().getParam("id");
+
+        cancelFlinkSQL(jobManagerHostPort, dfJob.getJobConfig().get("flink.submit.job.id"),
+                mongoClient, mongoCOLLECTION, routingContext, Boolean.FALSE);
+        // TODO - need to deal with interrupt exception
+        submitFlinkSQL(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort, groupid, colNameList,
+                colSchemaList, inputTopic, outputTopic, transSql, mongoClient, mongoCOLLECTION);
+
+        mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", id), // Select a unique document
+                // The update syntax: {$set, the json object containing the fields to update}
+                new JsonObject().put("$set", dfJob.toJson()), v -> {
+                    if (v.failed()) {
+                        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_NOT_FOUND)
+                                .end(HelpFunc.errorMsg(133, "updateOne to repository is failed."));
+                    } else {
+                        routingContext.response().putHeader(ConstantApp.CONTENT_TYPE,
+                                ConstantApp.APPLICATION_JSON_CHARSET_UTF_8).end();
+                    }
+                }
+        );
+
+
 
     }
 }
