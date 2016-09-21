@@ -348,7 +348,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Start Flink job Forward only if it is enabled and Connector type is FLINK
         if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
-            // Submit flink sql TODO create output topic if not exist
+            // Submit flink sql
             FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
                     config().getInteger("flink.trans.client.timeout", 8000), env,
                     this.zookeeper_server_host_and_port,
@@ -642,7 +642,7 @@ public class DFDataProcessor extends AbstractVerticle {
         List<String> list = new ArrayList<String>();
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
-        // TODO can use unblocking REST Client
+
         String restURI = "http://" + this.kafka_connect_rest_host+ ":" + this.kafka_connect_rest_port +
                 ConstantApp.KAFKA_CONNECT_REST_URL;
         // Container reused for keeping refreshing list of active Kafka jobs

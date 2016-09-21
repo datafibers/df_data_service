@@ -129,7 +129,7 @@ public class FlinkTransformProcessor {
             try {
                 FixedPartitioner partition =  new FixedPartitioner();
                 Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
-                result.writeToSink(sink);
+                result.writeToSink(sink); // Flink will create the output result topic automatically
                 JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
                 future.complete(jres);
 
