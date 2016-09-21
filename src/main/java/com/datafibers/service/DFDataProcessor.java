@@ -101,7 +101,7 @@ public class DFDataProcessor extends AbstractVerticle {
         try {
             InetAddress ip = InetAddress.getLocalHost();
             LOG.info("Web Admin Console is started @ http://" + ip + ":" +
-                    config().getInteger("http.port.df.processor", 8080) + "/admin");
+                    config().getInteger("http.port.df.processor", 8000));
         } catch (UnknownHostException e) {
             LOG.error("NetworkHostException", e.getCause());
         }
@@ -187,7 +187,11 @@ public class DFDataProcessor extends AbstractVerticle {
         Router router = Router.router(vertx);
 
         // Bind web ui
-        router.route("/admin/*").handler(StaticHandler.create().setCachingEnabled(false));
+        router.route("/").handler(StaticHandler.create("webroot").setCachingEnabled(false));
+
+        // Create the HTTP server to serve the web ui
+        vertx.createHttpServer().requestHandler(router::accept)
+               .listen(config().getInteger("http.port.df.processor", 8000));
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
@@ -219,7 +223,7 @@ public class DFDataProcessor extends AbstractVerticle {
 
         // Create the HTTP server and pass the "accept" method to the request handler.
         vertx.createHttpServer().requestHandler(router::accept)
-                                .listen(config().getInteger("http.port.df.processor", 8080), next::handle);
+                                .listen(config().getInteger("rest.port.df.processor", 8080), next::handle);
     }
 
     private void completeStartup(AsyncResult<HttpServer> http, Future<Void> fut) {
@@ -638,7 +642,7 @@ public class DFDataProcessor extends AbstractVerticle {
      */
     private void updateKafkaConnectorStatus() {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
-        LOG.info("Starting refreshing connector status from Kafka Connect REST Server.");
+        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SOURCE.name());
@@ -682,7 +686,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                             }
                                     );
                                 } else {
-                                    LOG.debug("Refreshing status - No changes detected on status.");
+                                    LOG.info("Refreshing Connects status from Kafka Connect REST Server - No Changes.");
                                 }
                             } catch (UnirestException ue) {
                                 LOG.error("Refreshing status REST client exception", ue.getCause());
@@ -692,7 +696,14 @@ public class DFDataProcessor extends AbstractVerticle {
                         LOG.error("Refreshing status Mongo client find active connectors exception", result.cause());
                     }
         });
-        LOG.info("Completed refreshing connector status from Kafka Connect REST Server.");
+        LOG.info("Refreshing Connects status from Kafka Connect REST Server - Complete.");
+    }
+
+    /**
+     * Keep refreshing the active Flink transforms/job status against remote Flink REST Server since v1.2
+     */
+    private void updateFlinkJobStatus() {
+        // TODO add implementation against Flink new REST API
     }
 
     /**
@@ -704,8 +715,6 @@ public class DFDataProcessor extends AbstractVerticle {
                 rc.get(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL,
                         List.class, portRestResponse -> {
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusMessage());
-                            LOG.info("received response from Kafka server: " + portRestResponse.statusCode());
                             routingContext
                                     .response().setStatusCode(ConstantApp.STATUS_CODE_OK)
                                     .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)

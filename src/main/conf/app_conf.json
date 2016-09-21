@@ -1,6 +1,7 @@
 {
   "debug.mode":"false",
-  "http.port.df.processor":8080,
+  "rest.port.df.processor":8080,
+  "http.port.df.processor":8000,
 
   "db.name":"df",
   "db.collection.name":"df_processor",
