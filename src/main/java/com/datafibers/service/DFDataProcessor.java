@@ -151,13 +151,14 @@ public class DFDataProcessor extends AbstractVerticle {
         }
         // Flink stream environment for data transformation
         if(transform_engine_flink_enabled) {
-            // TODO number of parallel and Remote cluster support
             if (config().getBoolean("debug.mode", Boolean.FALSE)) {
-                env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(2);
+                env = StreamExecutionEnvironment.getExecutionEnvironment()
+                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
                 // TODO add way deal with hard jar path
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar").setParallelism(2);
+                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar")
+                        .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
         }
 
@@ -450,6 +451,7 @@ public class DFDataProcessor extends AbstractVerticle {
                                         dfJob.getConnectorConfig().get("trans.sql"),
                                         mongo, COLLECTION, this.flink_server_host + ":" + this.flink_server_port,
                                         routingContext);
+
                             } else { // Where there is no change detected
                                 LOG.info("connectorConfig has NO change. Update in local repository only.");
                                 mongo.updateCollection(COLLECTION, new JsonObject().put("_id", id), // Select a unique document
@@ -635,7 +637,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * Keep refreshing the active Kafka connector status against remote Kafka REST Server
      */
     private void updateKafkaConnectorStatus() {
-        //TODO Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
+        // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
         LOG.info("Starting refreshing connector status from Kafka Connect REST Server.");
         List<String> list = new ArrayList<String>();
         list.add(ConstantApp.DF_CONNECT_TYPE.KAFKA_SINK.name());

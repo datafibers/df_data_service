@@ -43,21 +43,23 @@ public class FlinkTransformProcessor {
      * After that of 8000 milliseconds, it restores the system.out and put newly captured job_id to job config property
      * flink.submit.job.id. At the end, update the record at repo - mongo as response.
      *
-     * @param routingContext This is the contect from REST API
-     * @param mongoCOLLECTION This is mongodb collection name
-     * @param mongoClient This is the client used to insert final data to repository - mongodb
-     * @param transSql This is SQL string defined for data transformation
-     * @param outputTopic This is the kafka topic to keep transformed data
-     * @param inputTopic This is the kafka topic to keep source data
-     * @param colSchemaList This is the list of data type for the select columns
-     * @param colNameList This is the list of name for the select columns
-     * @param groupid This is the lkafka consumer id
-     * @param kafkaHostPort This is the hostname and port for kafka
-     * @param zookeeperHostPort This is the hostname and port for zookeeper
-     * @param flinkEnv This is the flink runtime enter point
-     * @param maxRunTime This is the max run time for thread of submitting flink job
-     * @param vertx This is the vertx enter point
-     * @param dfJob This is the job config object
+     * @param flinkToKafkaTopicReplicationNum The number of replications for the Kafka topic carrying Flink result
+     * @param flinkToKafkaTopicPartitionNum he number of partitions for the Kafka topic carrying Flink result
+     * @param routingContext The response for REST API
+     * @param mongoCOLLECTION The mongodb collection name
+     * @param mongoClient The client used to insert final data to repository - mongodb
+     * @param transSql The SQL string defined for data transformation
+     * @param outputTopic The kafka topic to keep transformed data
+     * @param inputTopic The kafka topic to keep source data
+     * @param colSchemaList The list of data type for the select columns
+     * @param colNameList The list of name for the select columns
+     * @param groupid The Kafka consumer id
+     * @param kafkaHostPort The hostname and port for kafka
+     * @param zookeeperHostPort The hostname and port for zookeeper
+     * @param flinkEnv The Flink runtime enter point
+     * @param maxRunTime The max run time for thread of submitting flink job
+     * @param vertx The vertx enter point
+     * @param dfJob The job config object
      */
     public static void submitFlinkSQL(DFJobPOPJ dfJob, Vertx vertx, Integer maxRunTime,
                                       StreamExecutionEnvironment flinkEnv, String zookeeperHostPort,
@@ -67,6 +69,7 @@ public class FlinkTransformProcessor {
 
         String uuid = dfJob.hashCode() + "_" +
                 dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
+
         // Create a stream to hold the output
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
@@ -130,12 +133,15 @@ public class FlinkTransformProcessor {
                 JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
                 future.complete(jres);
 
+            } catch (InterruptedException ie) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
+
             } catch (Exception e) {
                 LOG.error("Flink Submit Exception", e.getCause());
             }
 
         }, res -> {
-            LOG.debug("@@@@@@@BOLOCKING CODE IS TERMINATE?FINISHED");
+            LOG.debug("BLOCKING CODE IS TERMINATE?FINISHED");
 
         });
 
@@ -146,9 +152,12 @@ public class FlinkTransformProcessor {
             // Show what happened
             String jobID = StringUtils.substringBetween(baos.toString(),
                     "Submitting job with JobID:", "Waiting for job completion.").trim().replace(".", "");
-            // Close previous flink exec thread
+            /*
+            Close previous flink exec thread. This will lead Flink client to throw InterruptedException.
+            We capture it in above job submission code to ignore this as normal
+             */
             exec_flink.close();
-            System.out.println("@@FLINK JOB_ID Submitted - " + jobID);
+            LOG.info("Job - DF_FLINK_TRANS_" + uuid +  "'s JobID is captured - " + jobID);
             dfJob.setFlinkIDToJobConfig(jobID);
 
             mongoClient.updateCollection(mongoCOLLECTION, new JsonObject().put("_id", dfJob.getId()),
@@ -159,7 +168,6 @@ public class FlinkTransformProcessor {
                     }
             );
         });
-
     }
 
     /**
@@ -212,7 +220,7 @@ public class FlinkTransformProcessor {
 
         cancelFlinkSQL(jobManagerHostPort, dfJob.getJobConfig().get("flink.submit.job.id"),
                 mongoClient, mongoCOLLECTION, routingContext, Boolean.FALSE);
-        // TODO - need to deal with interrupt exception
+
         submitFlinkSQL(dfJob, vertx, maxRunTime, flinkEnv, zookeeperHostPort, kafkaHostPort, groupid, colNameList,
                 colSchemaList, inputTopic, outputTopic, transSql, mongoClient, mongoCOLLECTION);
 

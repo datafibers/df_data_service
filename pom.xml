@@ -12,6 +12,8 @@
         <vertx.version>3.3.2</vertx.version>
         <vertx.rest.client.version>2.1.0</vertx.rest.client.version>
         <flink.version>1.1.2</flink.version>
+        <kafka.version>0.10.0.0</kafka.version>
+        <zookeeperclinet.version>0.7</zookeeperclinet.version>
     </properties>
 
     <dependencies>

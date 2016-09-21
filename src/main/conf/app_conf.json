@@ -14,6 +14,7 @@
 
   "transform.engine.flink.enable":"true",
   "flink.servers.host":"localhost",
+  "flink.job.parallelism":1,
   "flink.server.port":6123,
   "flink.trans.client.timeout":120000,
 
