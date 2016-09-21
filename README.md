@@ -31,6 +31,9 @@ java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
 **<MORE_START_OPTION>** values are as follows
 * **"cluster"**: Deploy as cluster mode.
 
+## Web UI
+http://localhost:8000
+<img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
 ## Todo
 - [x] Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
