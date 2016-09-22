@@ -24,12 +24,13 @@ The application is packaged as a _fat jar_, using the
 ## Running
 
 Once packaged, just launch the _fat jar_ as follows ways
-1. Default with no parameters to launch standalone mode with web ui.
+
+* Default with no parameters to launch standalone mode with web ui.
 ```
 java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
 ```
 
-2. Full parameters mode.
+* Full parameters mode.
 ```
 java -jar df-processing-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
 ```
