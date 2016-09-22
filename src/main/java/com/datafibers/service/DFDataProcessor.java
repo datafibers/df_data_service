@@ -5,7 +5,6 @@ import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
 import com.datafibers.util.ConstantApp;
 import com.datafibers.util.HelpFunc;
-import com.datafibers.util.Runner;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -29,16 +28,10 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.StaticHandler;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.tools.cmd.gen.AnyVals;
-
 import java.io.*;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -77,34 +70,9 @@ public class DFDataProcessor extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(DFDataProcessor.class);
 
-    public static void main(String[] args) {
-        if (null == args || args.length == 0) {
-            Runner.runExample(DFDataProcessor.class);
-            LOG.info("Start DF Data Processor in standalone mode ...");
-        } else {
-            if(args[0].equalsIgnoreCase("cluster")) {
-                Runner.runClusteredExample(DFDataProcessor.class);
-                LOG.info("Start DF Data Processor in cluster mode...");
-            } else {
-                System.err.println("Usage: java -jar DFDataProcessor.jar <SERVICE_TO_DEPLOY>");
-                System.err.println("Note:");
-                System.err.println("<SERVICE_TO_DEPLOY>=NULL: Deploy DFDataProcessor vertical in standalone mode.");
-                System.err.println("<SERVICE_TO_DEPLOY>=\"cluster\": Deploy DFDataProcessor vertical in cluster mode.");
-                System.exit(0);
-            }
-        }
-
-    }
-
     @Override
     public void start(Future<Void> fut) {
-        try {
-            InetAddress ip = InetAddress.getLocalHost();
-            LOG.info("Web Admin Console is started @ http://" + ip + ":" +
-                    config().getInteger("http.port.df.processor", 8000));
-        } catch (UnknownHostException e) {
-            LOG.error("NetworkHostException", e.getCause());
-        }
+
         /**
          * Get all application configurations
          **/
@@ -155,9 +123,11 @@ public class DFDataProcessor extends AbstractVerticle {
                 env = StreamExecutionEnvironment.getExecutionEnvironment()
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
             } else {
-                // TODO add way deal with hard jar path
+                String jarPath = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+                LOG.debug("Distribute " + jarPath + " to Apache Flink cluster at " +
+                        this.flink_server_host + ":" + this.flink_server_port);
                 env = StreamExecutionEnvironment.createRemoteEnvironment(this.flink_server_host,
-                        this.flink_server_port, "/home/vagrant/df-data-processor-1.0-SNAPSHOT-fat.jar")
+                        this.flink_server_port, jarPath)
                         .setParallelism(config().getInteger("flink.job.parallelism", 1));
             }
         }
@@ -183,15 +153,8 @@ public class DFDataProcessor extends AbstractVerticle {
 
     private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
 
-        // Create a router object.
+        // Create a router object for rest.
         Router router = Router.router(vertx);
-
-        // Bind web ui
-        router.route("/").handler(StaticHandler.create("webroot").setCachingEnabled(false));
-
-        // Create the HTTP server to serve the web ui
-        vertx.createHttpServer().requestHandler(router::accept)
-               .listen(config().getInteger("http.port.df.processor", 8000));
 
         // Connects Rest API definition
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
@@ -640,7 +603,7 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Keep refreshing the active Kafka connector status against remote Kafka REST Server
      */
-    private void updateKafkaConnectorStatus() {
+    private void updateKafkaConnectorStatus() { // TODO add refreshing installed Connects
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
         LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
@@ -711,6 +674,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAllInstalledConnects(RoutingContext routingContext) {
+        // TODO get result from repo/mongo which import from Kafka Connects when server start
         final RestClientRequest postRestClientRequest =
                 rc.get(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL,
