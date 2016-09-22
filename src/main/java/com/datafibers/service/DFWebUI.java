@@ -20,7 +20,7 @@ public class DFWebUI extends AbstractVerticle {
         Router routerWeb = Router.router(vertx);
 
         // Bind web ui
-        routerWeb.route("/").handler(StaticHandler.create("webroot").setCachingEnabled(true));
+        routerWeb.route("/admin/*").handler(StaticHandler.create("webroot").setCachingEnabled(true));
 
         // Create the HTTP server to serve the web ui
         vertx.createHttpServer().requestHandler(routerWeb::accept)
@@ -29,7 +29,7 @@ public class DFWebUI extends AbstractVerticle {
         try {
             InetAddress ip = InetAddress.getLocalHost();
             LOG.info("Web Admin Console is started @ http://" + ip + ":" +
-                    config().getInteger("http.port.df.processor", 8000));
+                    config().getInteger("http.port.df.processor", 8000) + "/admin");
         } catch (UnknownHostException e) {
             LOG.error("NetworkHostException", e.getCause());
         }
