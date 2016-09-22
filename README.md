@@ -23,13 +23,25 @@ The application is packaged as a _fat jar_, using the
 
 ## Running
 
-Once packaged, just launch the _fat jar_ as follows:
-
+Once packaged, just launch the _fat jar_ as follows ways
+1. Default with no parameters to launch standalone mode with web ui.
 ```
 java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
 ```
-**<MORE_START_OPTION>** values are as follows
-* **"cluster"**: Deploy as cluster mode.
+
+2. Full parameters mode.
+```
+java -jar df-processing-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
+```
+
+**<DEPLOY_OPTION>** values are as follows
+* **"c"**: Deploy as cluster mode.
+* **"s"**: Deploy as standalone mode.
+
+**<WEB_UI_OPTION>** values are as follows
+* **"ui"**: Deploy with web ui.
+* **"no-ui"**: Deploy without web ui.
+
 
 ## Web UI
 http://localhost:8000
@@ -37,10 +49,14 @@ http://localhost:8000
 
 ## Todo
 - [x] Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
-- [ ] Add to generic function to do connector validation before creation
-- [ ] Add submit job actions
 - [x] Fetch all installed connectors/plugins in regularly frequency
 - [x] Need to report connector or job status
 - [x] Need an initial method to import all available|paused|running connectors from kafka connect
-- [ ] Add Flink Table API engine
+- [x] Add Flink Table API engine
+- [ ] Add to generic function to do connector validation before creation
+- [ ] Add submit other job actions, such as start, hold, etc
 - [ ] Add Spark Structure Streaming
+- [ ] Add batch sql transform - Hive & Spark SQL
+- [ ] Topic visualization
+- [ ] Launch 3rd party jar
+- [ ] Job level control and schedule

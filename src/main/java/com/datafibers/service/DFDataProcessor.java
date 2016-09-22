@@ -603,7 +603,7 @@ public class DFDataProcessor extends AbstractVerticle {
     /**
      * Keep refreshing the active Kafka connector status against remote Kafka REST Server
      */
-    private void updateKafkaConnectorStatus() { // TODO add refreshing installed Connects
+    private void updateKafkaConnectorStatus() {
         // Loop existing KAFKA connectors in repository and fetch their latest status from Kafka Server
         LOG.info("Refreshing Connects status from Kafka Connect REST Server - Start.");
         List<String> list = new ArrayList<String>();
@@ -674,7 +674,7 @@ public class DFDataProcessor extends AbstractVerticle {
      * @param routingContext
      */
     private void getAllInstalledConnects(RoutingContext routingContext) {
-        // TODO get result from repo/mongo which import from Kafka Connects when server start
+        // TODO get all installed transforms as well
         final RestClientRequest postRestClientRequest =
                 rc.get(
                         ConstantApp.KAFKA_CONNECT_PLUGIN_REST_URL,
