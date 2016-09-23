@@ -1,4 +1,4 @@
-# DataFibers Services
+# DataFibers Data Services
 DataFibers (DF) - A pure streaming processing application on Kafka and Flink. 
 The DF processor has two components defined to deal with stream ETL (Extract, Transform, and Load).
 * **Connects** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
@@ -27,12 +27,12 @@ Once packaged, just launch the _fat jar_ as follows ways
 
 * Default with no parameters to launch standalone mode with web ui.
 ```
-java -jar df-processing-service-1.0-SNAPSHOT-fat.jar
+java -jar df-data-service-1.0-SNAPSHOT-fat.jar
 ```
 
 * Full parameters mode.
 ```
-java -jar df-processing-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
+java -jar df-data-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
 ```
 
 **<DEPLOY_OPTION>** values are as follows
