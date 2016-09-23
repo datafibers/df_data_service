@@ -1,6 +1,6 @@
-# DF Data Processor Service
-
-This project has two components defined to deal with stream ETL (Extract, Transform, and Load).
+# DataFibers Services
+DataFibers (DF) - A pure streaming processing application on Kafka and Flink. 
+The DF processor has two components defined to deal with stream ETL (Extract, Transform, and Load).
 * **Connects** is to leverage Kafka Connect REST API on Confluent v.3.0.0 to landing or publishing data in or out of Apache Kafka.
 * **Transforms** is to leverage streaming processing engine, such as Apache Flink, for data transformation.
 
@@ -49,7 +49,6 @@ http://localhost:8000/admin
 <img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
 ## Todo
-- [x] Add UI from [NG-Admin](https://github.com/marmelab/ng-admin)
 - [x] Fetch all installed connectors/plugins in regularly frequency
 - [x] Need to report connector or job status
 - [x] Need an initial method to import all available|paused|running connectors from kafka connect
@@ -59,7 +58,6 @@ http://localhost:8000/admin
 - [ ] Add to generic function to do connector validation before creation
 - [ ] Add submit other job actions, such as start, hold, etc
 - [ ] Add Spark Structure Streaming
-- [ ] Add batch sql transform - Hive & Spark SQL
 - [ ] Topic visualization
 - [ ] Launch 3rd party jar
 - [ ] Job level control and schedule
