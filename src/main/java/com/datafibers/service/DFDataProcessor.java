@@ -156,8 +156,7 @@ public class DFDataProcessor extends AbstractVerticle {
         // Create a router object for rest.
         Router router = Router.router(vertx);
 
-        // Connects Rest API definition
-        router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
+        // Job including both Connects and Transforms Rest API definition
         router.options(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_PROCESSOR_REST_URL).handler(this::getAllProcessor);
 

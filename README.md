@@ -54,6 +54,8 @@ http://localhost:8000/admin
 - [x] Need to report connector or job status
 - [x] Need an initial method to import all available|paused|running connectors from kafka connect
 - [x] Add Flink Table API engine
+- [ ] Add memory LKP
+- [ ] Add Connects, Transforms Logging URL
 - [ ] Add to generic function to do connector validation before creation
 - [ ] Add submit other job actions, such as start, hold, etc
 - [ ] Add Spark Structure Streaming
@@ -61,3 +63,4 @@ http://localhost:8000/admin
 - [ ] Topic visualization
 - [ ] Launch 3rd party jar
 - [ ] Job level control and schedule
+- [ ] Job metrics
