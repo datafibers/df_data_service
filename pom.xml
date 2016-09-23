@@ -95,13 +95,6 @@
             <version>${vertx.rest.client.version}</version>
         </dependency>
 
-        <!-- Apache Hive JDBC Driver -->
-        <dependency>
-            <groupId>org.apache.hive</groupId>
-            <artifactId>hive-jdbc</artifactId>
-            <version>${hivejdbc.version}</version>
-        </dependency>
-
         <!-- Blocking REST Client for initial data import -->
         <dependency>
             <groupId>com.mashape.unirest</groupId>
