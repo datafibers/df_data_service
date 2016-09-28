@@ -1,5 +1,6 @@
 package com.datafibers.service;
 
+import com.datafibers.flinknext.Kafka09JsonTableSink;
 import com.datafibers.model.DFJobPOPJ;
 import com.datafibers.processor.FlinkTransformProcessor;
 import com.datafibers.processor.KafkaConnectProcessor;
@@ -28,14 +29,23 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.java.table.StreamTableEnvironment;
+import org.apache.flink.api.table.Table;
+import org.apache.flink.api.table.TableEnvironment;
+import org.apache.flink.api.table.sinks.CsvTableSink;
+import org.apache.flink.api.table.sinks.TableSink;
+import org.apache.flink.runtime.client.JobExecutionException;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
+import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
+import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -693,6 +703,5 @@ public class DFDataProcessor extends AbstractVerticle {
         postRestClientRequest.setAcceptHeader(Arrays.asList(MediaType.APPLICATION_JSON));
         postRestClientRequest.end();
     }
-
 }
 

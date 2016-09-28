@@ -19,8 +19,8 @@ customHeaderTemplate =
 	var transformer = nga.entity('tr').label('TRANSFORMS');	
     var installed_connects = nga.entity('installed_connects').identifier(nga.field('class')).label('INSTALLED').readOnly();
 
-// set the fields of the producer entity list view
-    producer.listView().fields([
+    // set the fields of the producer entity list view
+    producer.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
         nga.field('taskId').label('Task ID'),
         nga.field('name').label('Job Name'),
@@ -30,7 +30,7 @@ customHeaderTemplate =
     ]);
     
     // set the fields of the transformer entity list view
-    transformer.listView().fields([
+    transformer.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
         nga.field('taskId').label('Task ID'),
         nga.field('name').label('Job Name'),
@@ -87,7 +87,7 @@ customHeaderTemplate =
 	transformer.editionView().fields(transformer.creationView().fields());
 	
 	// set the fields of the proceesor entity list view
-    processor.listView().fields([
+    processor.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
         nga.field('taskId').label('Task ID'),
         nga.field('name').label('Job Name'),
@@ -100,7 +100,7 @@ customHeaderTemplate =
     processor.listView().batchActions([])
 
     // set the fields of the producer entity list view
-    installed_connects.listView().fields([
+    installed_connects.listView().sortField('class').fields([
         nga.field('class').label('Connects')
     ]);
     installed_connects.listView().title('Connects Installed');

@@ -11,14 +11,20 @@ import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.table.StreamTableEnvironment;
 import org.apache.flink.api.table.Table;
 import org.apache.flink.api.table.TableEnvironment;
 import org.apache.flink.client.CliFrontend;
+import org.apache.flink.runtime.client.JobExecutionException;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.apache.flink.streaming.connectors.kafka.Kafka09JsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.KafkaJsonTableSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
+import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
@@ -66,6 +72,8 @@ public class FlinkTransformProcessor {
                                       String kafkaHostPort, String groupid, String colNameList,
                                       String colSchemaList, String inputTopic, String outputTopic,
                                       String transSql, MongoClient mongoClient, String mongoCOLLECTION) {
+
+        String inputTopic_stage = "df_trans_stage_" + inputTopic;
 
         String uuid = dfJob.hashCode() + "_" +
                 dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
@@ -117,13 +125,25 @@ public class FlinkTransformProcessor {
                 }
             }
 
-            KafkaJsonTableSource kafkaTableSource =
-                    new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
+            // Internal covert Json String to Json - Begin
+            DataStream<String> stream = flinkEnv
+                    .addSource(new FlinkKafkaConsumer09<>(inputTopic, new SimpleStringSchema(), properties));
 
-            tableEnv.registerTableSource(inputTopic, kafkaTableSource);
+            stream.map(new MapFunction<String, String>() {
+                @Override
+                public String map(String jsonString) throws Exception {
+                    return jsonString.replaceAll("\\\\", "").replace("\"{", "{").replace("}\"","}");
+                }
+            }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, inputTopic_stage, new SimpleStringSchema()));
+            // Internal covert Json String to Json - End
+
+            KafkaJsonTableSource kafkaTableSource =
+                    new Kafka09JsonTableSource(inputTopic_stage, properties, fieldNames, fieldTypes);
+
+            tableEnv.registerTableSource(inputTopic_stage, kafkaTableSource);
 
             // run a SQL query on the Table and retrieve the result as a new Table
-            Table result = tableEnv.sql(transSql);
+            Table result = tableEnv.sql(transSql.replace(inputTopic, inputTopic_stage));
 
             // create a TableSink
             try {
@@ -133,9 +153,10 @@ public class FlinkTransformProcessor {
                 JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
                 future.complete(jres);
 
+            } catch (JobExecutionException je) {
+                LOG.info("Flink Client is terminated normally once the job is submitted.");
             } catch (InterruptedException ie) {
                 LOG.info("Flink Client is terminated normally once the job is submitted.");
-
             } catch (Exception e) {
                 LOG.error("Flink Submit Exception", e.getCause());
             }
