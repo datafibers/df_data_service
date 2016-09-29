@@ -22,7 +22,7 @@ customHeaderTemplate =
     // set the fields of the producer entity list view
     producer.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId').label('Task ID'),
+        nga.field('taskId', 'number').format('0o').label('Task ID'),
         nga.field('name').label('Job Name'),
         nga.field('connector').label('Processor'),
         nga.field('connectorType').label('Type'),
@@ -32,7 +32,7 @@ customHeaderTemplate =
     // set the fields of the transformer entity list view
     transformer.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId').label('Task ID'),
+        nga.field('taskId', 'number').format('0o').label('Task ID'),
         nga.field('name').label('Job Name'),
         nga.field('connector').label('Processor'),
         nga.field('connectorType').label('Type'),
@@ -44,18 +44,13 @@ customHeaderTemplate =
     transformer.listView().title('Transforms Dashboard');
 
     producer.creationView().fields([
-        nga.field('taskId').label('Task ID','number'),
+        nga.field('taskId', 'number').format('0o').label('Task ID'),
         nga.field('name').label('Job Name'),
         nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Connects'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'KAFKA_SOURCE', label:'KAFKA_SOURCE'},
-                                {value:'KAFKA_SINK', label:'KAFKA_SINK'},
-                                {value:'HDFS_SOURCE', label:'HDFS_SOURCE'},
-                                {value:'HDFS_SINK', label:'HDFS_SINK'},
-                                {value:'HIVE_SOURCE', label:'HIVE_SOURCE'},
-                                {value:'HIVE_SINK', label:'HIVE_SINK'},
-                                {value:'NONE', label:'NONE'}]).label('Connector Type'),
+                                {value:'KAFKA_SOURCE', label:'Kafka Connect Source'},
+                                {value:'KAFKA_SINK', label:'Kafka Connect Sink'}]).label('Connector Type'),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
@@ -63,18 +58,15 @@ customHeaderTemplate =
     ]);
 	
 	transformer.creationView().fields([
-        nga.field('taskId').label('Task ID','number'),
+        nga.field('taskId', 'number').format('0o').label('Task ID'),
         nga.field('name').label('Job Name'),
         nga.field('connector').attributes({placeholder:'No space allowed and 5 chars min.'}).validation({ required: true, pattern: '[A-Za-z0-9\-]{5,20}' }).label('Transforms'),
         nga.field('connectorType', 'choice')
                 .choices([
-                                {value:'FLINK_TRANS', label:'FLINK_TRANS'},
-                                {value:'FLINK_JOINS', label:'FLINK_JOINS'},
-                                {value:'SPARK_TRANS', label:'SPARK_TRANS'},
-                                {value:'SPARK_JOINS', label:'SPARK_JOINS'},
-                                {value:'HIVE_TRANS', label:'HIVE_TRANS'},
-                                {value:'HIVE_JOINS', label:'HIVE_JOINS'},
-                                {value:'NONE', label:'NONE'}]).label('Transforms Type'),
+                                {value:'FLINK_TRANS', label:'Flink Stream SQL'},
+                                {value:'FLINK_JOINS', label:'Flink Stream Join'},
+                                {value:'FLINK_UDF', label:'Flink User Defined Function'},
+                                {value:'SPARK_TRANS', label:'Spark Stream SQL'}]).label('Transforms Type'),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
         nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
@@ -89,7 +81,7 @@ customHeaderTemplate =
 	// set the fields of the proceesor entity list view
     processor.listView().sortField('name').fields([
         nga.field('id').label('Job ID').isDetailLink(true),
-        nga.field('taskId').label('Task ID'),
+        nga.field('taskId', 'number').format('0o').label('Task ID'),
         nga.field('name').label('Job Name'),
         nga.field('connector').label('Processor'),
         nga.field('connectorType').label('Type'),

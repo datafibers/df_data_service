@@ -48,29 +48,31 @@ public final class ConstantApp {
     public static final int STATUS_CODE_CONFLICT = 409;
 
     public enum DF_STATUS {
-        UNASSIGNED, // The Kafka connector/task has not yet been assigned to a worker.
-        RUNNING, // The Kafka connector/task is running.
-        PAUSED, // The Kafka connector/task has been administratively paused.
-        FAILED, // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
-        LOST, // The Kafka connect restart and lost the connector job in DF repository. These jobs should be removed manually.
+        UNASSIGNED,         // The Kafka connector/task has not yet been assigned to a worker.
+        RUNNING,            // The Kafka connector/task is running.
+        PAUSED,             // The Kafka connector/task has been administratively paused.
+        FAILED,             // The Kafka connector/task has failed (usually by raising an exception, which is reported in the status output).
+        LOST,               // The Kafka connect restart and lost the connector job in DF repository. These jobs should be removed manually.
         NONE
     }
 
     public enum DF_CONNECT_TYPE {
-        KAFKA_SOURCE, //Kafka Connector import data into Kafka
-        KAFKA_SINK, //Kafka Connector export data out of Kafka
-        EVENTBUS_SOURCE, //The plugin import data into Vertx Event Bus
-        EVENTBUS_SINK, //The plugin export data out of Vertx Event Bus
-        HDFS_SOURCE, //The plugin import data into HDFS
-        HDFS_SINK, //The plugin export data out of HDFS
-        HIVE_SOURCE, //The plugin import data into Hive
-        HIVE_SINK, //The plugin export data out of Hive
-        FLINK_TRANS, //Flink transformation on single topics
-        FLINK_JOINS, //Flink transformation on multiple topics
-        SPARK_TRANS, //Flink transformation on single topics
-        SPARK_JOINS, //Flink transformation on multiple topics
-        HIVE_TRANS, //Flink transformation on single topics
-        HIVE_JOINS, //Flink transformation on multiple topics
+        KAFKA_SOURCE,       // Kafka Connector import data into Kafka
+        KAFKA_SINK,         // Kafka Connector export data out of Kafka
+        EVENTBUS_SOURCE,    // The plugin import data into Vertx Event Bus
+        EVENTBUS_SINK,      // The plugin export data out of Vertx Event Bus
+        HDFS_SOURCE,        // The plugin import data into HDFS
+        HDFS_SINK,          // The plugin export data out of HDFS
+        HIVE_SOURCE,        // The plugin import data into Hive
+        HIVE_SINK,          // The plugin export data out of Hive
+        FLINK_TRANS,        // Flink streaming SQL
+        FLINK_JOINS,        // Flink streaming of Data Join
+        FLINK_UDF,          // Flink user defined jar/program
+        SPARK_TRANS,        // Spark streaming SQL
+        SPARK_JOINS,        // Spark streaming of Data Join
+        SPARK_UDF,          // Spark user defined jar/program
+        HIVE_TRANS,         // Hive batch SQL
+        HIVE_JOINS,         // Hive batch join
         NONE
     }
 
