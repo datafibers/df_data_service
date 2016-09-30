@@ -69,8 +69,8 @@ customHeaderTemplate =
                                 {value:'SPARK_TRANS', label:'Spark Stream SQL'}]).label('Transforms Type'),
         nga.field('status').editable(false).label('Job Status'),
         nga.field('description', 'text'),
-        nga.field('jobConfig','json').attributes({placeholder:'Json format of job configuration is request.'}).label('Job Config'),
-        nga.field('connectorConfig','json').attributes({placeholder:'Json format of transforms configuration is request.'}).label('Transforms Config')
+        nga.field('jobConfig','json').label('Job Config'),
+        nga.field('connectorConfig','json').label('Transforms Config')
     ]);
 	
 	

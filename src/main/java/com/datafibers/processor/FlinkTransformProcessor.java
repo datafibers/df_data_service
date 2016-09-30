@@ -33,6 +33,9 @@ import java.util.Properties;
 /* This is sample transform config
     {
         "group.id":"consumer3",
+        "data.format.input":"json_string",
+        "data.format.output":"json_string",
+        "avro.schema.enabled":"false",
         "column.name.list":"symbol,name",
         "column.schema.list":"string,string",
         "topic.for.query":"finance",
@@ -74,6 +77,7 @@ public class FlinkTransformProcessor {
                                       String transSql, MongoClient mongoClient, String mongoCOLLECTION) {
 
         String inputTopic_stage = "df_trans_stage_" + inputTopic;
+        String outputTopic_stage = "df_trans_stage_" + outputTopic;
 
         String uuid = dfJob.hashCode() + "_" +
                 dfJob.getName() + "_" + dfJob.getConnector() + "_" + dfJob.getTaskId();
@@ -125,31 +129,64 @@ public class FlinkTransformProcessor {
                 }
             }
 
-            // Internal covert Json String to Json - Begin
-            DataStream<String> stream = flinkEnv
-                    .addSource(new FlinkKafkaConsumer09<>(inputTopic, new SimpleStringSchema(), properties));
+            Table result;
 
-            stream.map(new MapFunction<String, String>() {
-                @Override
-                public String map(String jsonString) throws Exception {
-                    return jsonString.replaceAll("\\\\", "").replace("\"{", "{").replace("}\"","}");
-                }
-            }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, inputTopic_stage, new SimpleStringSchema()));
-            // Internal covert Json String to Json - End
+            if (dfJob.getConnectorConfig().get("data.format.input").trim().toLowerCase().
+                    equalsIgnoreCase("json_string")){
+                // Internal covert Json String to Json - Begin
+                DataStream<String> stream = flinkEnv
+                        .addSource(new FlinkKafkaConsumer09<>(inputTopic, new SimpleStringSchema(), properties));
 
-            KafkaJsonTableSource kafkaTableSource =
-                    new Kafka09JsonTableSource(inputTopic_stage, properties, fieldNames, fieldTypes);
+                stream.map(new MapFunction<String, String>() {
+                    @Override
+                    public String map(String jsonString) throws Exception {
+                        return jsonString.replaceAll("\\\\", "").replace("\"{", "{").replace("}\"","}");
+                    }
+                }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, inputTopic_stage, new SimpleStringSchema()));
+                // Internal covert Json String to Json - End
 
-            tableEnv.registerTableSource(inputTopic_stage, kafkaTableSource);
+                KafkaJsonTableSource kafkaTableSource =
+                        new Kafka09JsonTableSource(inputTopic_stage, properties, fieldNames, fieldTypes);
 
-            // run a SQL query on the Table and retrieve the result as a new Table
-            Table result = tableEnv.sql(transSql.replace(inputTopic, inputTopic_stage));
+                tableEnv.registerTableSource(inputTopic_stage, kafkaTableSource);
+
+                // run a SQL query on the Table and retrieve the result as a new Table
+                result = tableEnv.sql(transSql.replace(inputTopic, inputTopic_stage));
+            } else { // Topic has json data, no transformation needed
+                KafkaJsonTableSource kafkaTableSource =
+                        new Kafka09JsonTableSource(inputTopic, properties, fieldNames, fieldTypes);
+
+                tableEnv.registerTableSource(inputTopic, kafkaTableSource);
+
+                // run a SQL query on the Table and retrieve the result as a new Table
+                result = tableEnv.sql(transSql);
+            }
+
+            FixedPartitioner partition =  new FixedPartitioner();
+
+            if (dfJob.getConnectorConfig().get("data.format.output").trim().toLowerCase().
+                    equalsIgnoreCase("json_string")) {
+                Kafka09JsonTableSink sinkJsonString = new Kafka09JsonTableSink (outputTopic_stage, properties, partition);
+                result.writeToSink(sinkJsonString); // Flink will create the output result topic automatically
+
+                // Internal covert Json to Json String - Begin
+                DataStream<String> stream = flinkEnv
+                        .addSource(new FlinkKafkaConsumer09<>(outputTopic_stage, new SimpleStringSchema(), properties));
+
+                stream.map(new MapFunction<String, String>() {
+                    @Override
+                    public String map(String jsonString) throws Exception {
+                        return "\"" +  jsonString.replace("\"", "\\\"") + "\"";
+                    }
+                }).addSink(new FlinkKafkaProducer09<String>(kafkaHostPort, outputTopic, new SimpleStringSchema()));
+                // Internal covert Json to Json String - End
+            } else {
+                Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
+                result.writeToSink(sink); // Flink will create the output result topic automatically
+            }
 
             // create a TableSink
             try {
-                FixedPartitioner partition =  new FixedPartitioner();
-                Kafka09JsonTableSink sink = new Kafka09JsonTableSink (outputTopic, properties, partition);
-                result.writeToSink(sink); // Flink will create the output result topic automatically
                 JobExecutionResult jres = flinkEnv.execute("DF_FLINK_TRANS_" + uuid);
                 future.complete(jres);
 
@@ -158,7 +195,7 @@ public class FlinkTransformProcessor {
             } catch (InterruptedException ie) {
                 LOG.info("Flink Client is terminated normally once the job is submitted.");
             } catch (Exception e) {
-                LOG.error("Flink Submit Exception", e.getCause());
+                LOG.error("Flink Submit Exception");
             }
 
         }, res -> {

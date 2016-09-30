@@ -48,6 +48,9 @@ java -jar df-data-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
 http://localhost:8000/admin
 <img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
+## Manual
+https://www.gitbook.com/read/book/datafibers/datafibers-complete-guide
+
 ## Todo
 - [x] Fetch all installed connectors/plugins in regularly frequency
 - [x] Need to report connector or job status
