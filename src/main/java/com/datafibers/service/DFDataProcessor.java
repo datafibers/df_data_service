@@ -302,10 +302,10 @@ public class DFDataProcessor extends AbstractVerticle {
         // Start Kafka Connect REST API Forward only if Kafka is enabled and Connector type is Kafka Connect
         if (this.kafka_connect_enabled && dfJob.getConnectorType().contains("KAFKA")) {
             // Auto fix "name" in Connect Config when mismatch with Connector Name
-            if (!dfJob.getConnector().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
-                    dfJob.getConnectorConfig().get("name") != null) {
-                dfJob.getConnectorConfig().put("name", dfJob.getConnector());
-            }
+//            if (!dfJob.getConnector().equalsIgnoreCase(dfJob.getConnectorConfig().get("name")) &&
+//                    dfJob.getConnectorConfig().get("name") != null) {
+//                dfJob.getConnectorConfig().put("name", dfJob.getConnector());
+//            }
             KafkaConnectProcessor.forwardPOSTAsAddOne(routingContext, rc, mongo, COLLECTION, dfJob);
         } else {
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
