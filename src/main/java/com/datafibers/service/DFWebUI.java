@@ -29,7 +29,7 @@ public class DFWebUI extends AbstractVerticle {
         try {
             InetAddress ip = InetAddress.getLocalHost();
             LOG.info("Web Admin Console is started @ http://" + ip + ":" +
-                    config().getInteger("http.port.df.processor", 8000) + "/admin");
+                    config().getInteger("http.port.df.processor", 8000) + "/admin/");
         } catch (UnknownHostException e) {
             LOG.error("NetworkHostException", e.getCause());
         }

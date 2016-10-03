@@ -45,7 +45,7 @@ java -jar df-data-service-1.0-SNAPSHOT-fat.jar <DEPLOY_OPTION> <WEB_UI_OPTION>
 
 
 ## Web UI
-http://localhost:8000/admin
+http://localhost:8000/admin/
 <img src="https://raw.githubusercontent.com/datafibers/datafibers_web_src/master/themes/hugo-agency-theme/static/img/UI.PNG" width="800">
 
 ## Manual
