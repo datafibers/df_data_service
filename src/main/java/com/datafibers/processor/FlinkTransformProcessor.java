@@ -44,6 +44,18 @@ import java.util.Properties;
     }
 */
 
+/* This is sample udf config
+    {
+        "group.id":"consumer3",
+        "data.format.input":"json_string",
+        "data.format.output":"json_string",
+        "avro.schema.enabled":"false",
+        "topic.for.query":"finance",
+        "topic.for.result":"stock",
+        "trans.jar":"flinkUDFDemo.jar"
+    }
+*/
+
 public class FlinkTransformProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(FlinkTransformProcessor.class);
 
@@ -295,6 +307,50 @@ public class FlinkTransformProcessor {
                 }
         );
 
+
+
+    }
+
+    /**
+     *
+     * @param dfJob
+     * @param vertx
+     * @param maxRunTime
+     * @param flinkEnv
+     * @param zookeeperHostPort
+     * @param kafkaHostPort
+     * @param groupid
+     * @param colNameList
+     * @param colSchemaList
+     * @param inputTopic
+     * @param outputTopic
+     * @param transSql
+     * @param mongoClient
+     * @param mongoCOLLECTION
+     * @param jobManagerHostPort
+     * @param routingContext
+     */
+    public static void runFlinkJar (   String jarFile,
+                                       String jobManagerHostPort) {
+
+        try {
+            String runCMD = "run;-m;" + jobManagerHostPort + ";" + jarFile;
+            CliFrontend cli = new CliFrontend("conf/flink-conf.yaml");
+            int retCode = cli.parseParameters(runCMD.split(";"));
+            String respMsg = (retCode == 0)? "Flink job is submitted for Jar UDF at " :
+                    "Flink job is failed to submit for Jar UDF at " + jarFile;
+            LOG.info(respMsg);
+
+//            if(cancelRepoAndSendResp) {
+//                mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
+//                        remove -> routingContext.response().end(id + respMsg));
+//            }
+
+        } catch (IllegalArgumentException ire) {
+            LOG.warn("No Flink job found with ID for cancellation");
+        } catch (Throwable t) {
+            LOG.error("Fatal error while running command line interface.", t.getCause());
+        }
 
 
     }

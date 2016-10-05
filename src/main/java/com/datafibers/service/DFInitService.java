@@ -59,7 +59,7 @@ public class DFInitService {
                 LOG.info("Start DF Data Processor in standalone mode without Web UI...");
 
             } else if(args[0].equalsIgnoreCase("t")) {
-                testFlinkSQL();
+                testFlinkRun();
             } else {
                 System.err.println("Usage: java -jar DFDataProcessor.jar <SERVICE_TO_DEPLOY> <UI_Enabled>");
                 System.err.println("Note:");
@@ -80,6 +80,12 @@ public class DFInitService {
                 " \\  /\\  /  __/ | (_| (_) | | | | | |  __/ | || (_) |  / /_// (_| | || (_| / /   | | |_) |  __/ |  \\__ \\\n" +
                 "  \\/  \\/ \\___|_|\\___\\___/|_| |_| |_|\\___|  \\__\\___/  /___,' \\__,_|\\__\\__,_\\/    |_|_.__/ \\___|_|  |___/\n" +
                 "                                                                                                       ");
+    }
+
+    public static void testFlinkRun() {
+        LOG.info("Only Unit Testing Function is enabled - Test Flink Run UDF");
+        String jarFile = "/home/vagrant/quick-start-1.0-fat.jar";
+        FlinkTransformProcessor.runFlinkJar(jarFile, "localhost:6123");
     }
 
     public static void testFlinkSQL() {
