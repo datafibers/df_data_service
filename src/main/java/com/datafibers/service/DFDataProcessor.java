@@ -22,10 +22,12 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import io.vertx.core.*;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -45,6 +47,7 @@ import org.apache.flink.streaming.connectors.kafka.partitioner.FixedPartitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -185,8 +188,11 @@ public class DFDataProcessor extends AbstractVerticle {
         // Transforms Rest API definition
         router.options(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::corsHandle);
         router.options(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::corsHandle);
+        router.options(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::corsHandle);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::getAllTransforms);
         router.get(ConstantApp.DF_TRANSFORMS_REST_URL_WITH_ID).handler(this::getOne);
+        router.route(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD).handler(BodyHandler.create());
+        router.post(ConstantApp.DF_TRANSFORMS_UPLOAD_FILE_REST_URL).handler(this::uploadFiles);
         router.route(ConstantApp.DF_TRANSFORMS_REST_URL_WILD).handler(BodyHandler.create());
 
         router.post(ConstantApp.DF_TRANSFORMS_REST_URL).handler(this::addOneTransforms); // Flink Forward
@@ -249,6 +255,77 @@ public class DFDataProcessor extends AbstractVerticle {
                 }
             });
         }
+    }
+
+    private void uploadFiles (RoutingContext routingContext) {
+
+        LOG.info("UPLOADING FILES ..." + routingContext.request().toString());
+
+        Set<FileUpload> fileUploadSet = routingContext.fileUploads();
+
+        Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
+        while (fileUploadIterator.hasNext()) {
+            FileUpload fileUpload = fileUploadIterator.next();
+
+            // To get the uploaded file do
+            // TODO - do not put buffer since it is bottle neck for huge file
+            // TODO check file size and extention
+            Buffer uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName());
+
+            // Uploaded File Name
+            try {
+                String fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
+                LOG.info("UPLOADED FILE NAME ..." + fileName);
+                LOG.info("UPLOADED FILE CONTENT ..." + uploadedFile.toString());
+
+                routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+//        routingContext.request().setExpectMultipart(true);
+//        routingContext.request().uploadHandler(upload -> {
+//            upload.exceptionHandler(cause -> {
+//                routingContext.request().response().setChunked(true).end("Upload failed");
+//            });
+//
+//            upload.endHandler(v -> {
+//                routingContext.request().response().setChunked(true).end("Successfully uploaded to " + upload.filename());
+//            });
+//            // FIXME - Potential security exploit! In a real system you must check this filename
+//            // to make sure you're not saving to a place where you don't want!
+//            // Or better still, just use Vert.x-Web which controls the upload area.
+//            upload.streamToFileSystem("jar/" + upload.filename());
+//        });
+
+/*        routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));*/
+
+        /*Set<FileUpload> fileUploadSet = routingContext.fileUploads();
+
+        Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
+        while (fileUploadIterator.hasNext()){
+            FileUpload fileUpload = fileUploadIterator.next();
+
+            // To get the uploaded file do
+            Buffer uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName());
+
+            // Uploaded File Name
+            try {
+                String fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8");
+                *//*routingContext.response().setStatusCode(ConstantApp.STATUS_CODE_OK)
+                        .putHeader(ConstantApp.CONTENT_TYPE, ConstantApp.APPLICATION_JSON_CHARSET_UTF_8)
+                        .end(Json.encodePrettily(new JsonObject().put("uploaded_file_name", "test.csv")));*//*
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+        }*/
     }
 
     /**
@@ -327,8 +404,8 @@ public class DFDataProcessor extends AbstractVerticle {
         LOG.info("rebuilt object as:" + dfJob.toJson());
         dfJob.setStatus(ConstantApp.DF_STATUS.RUNNING.name());
 
-        // Start Flink job Forward only if it is enabled and Connector type is FLINK
-        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK")) {
+        // Start Flink job Forward only if it is enabled and Connector type is FLINK_TRANS
+        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_TRANS")) {
             // Submit flink sql
             FlinkTransformProcessor.submitFlinkSQL(dfJob, vertx,
                     config().getInteger("flink.trans.client.timeout", 8000), env,
@@ -342,6 +419,12 @@ public class DFDataProcessor extends AbstractVerticle {
                     dfJob.getConnectorConfig().get("topic.for.result"),
                     dfJob.getConnectorConfig().get("trans.sql"),
                     mongo, COLLECTION);
+        } // Mongo updated is delayed inside of above block
+
+        if (this.transform_engine_flink_enabled && dfJob.getConnectorType().contains("FLINK_UDF")) {
+            // Submit flink sql
+            FlinkTransformProcessor.runFlinkJar("",
+                    this.flink_server_host + ":" + this.flink_server_port);
         }
             mongo.insert(COLLECTION, dfJob.toJson(), r -> routingContext
                 .response().setStatusCode(ConstantApp.STATUS_CODE_OK_CREATED)

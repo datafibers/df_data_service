@@ -22,10 +22,11 @@ public final class ConstantApp {
 
     // DF Transforms REST endpoint URLs
     public static final String DF_TRANSFORMS_REST_URL = "/api/df/tr";
-    public static final String DF_TRANSFORMS_INSTALLED_CONNECTS_REST_URL = "/api/tr/installed_transforms";
+    public static final String DF_TRANSFORMS_INSTALLED_TRANSFORMS_REST_URL = "/api/df/installed_transforms";
     public static final String DF_TRANSFORMS_REST_URL_WILD = "/api/df/tr*";
     public static final String DF_TRANSFORMS_REST_URL_WITH_ID = DF_TRANSFORMS_REST_URL + "/:id";
-    public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/tr/uploaded_files";
+    public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL_WILD = "/api/df/uploaded_files*";
+    public static final String DF_TRANSFORMS_UPLOAD_FILE_REST_URL = "/api/df/uploaded_files";
 
     // Kafka CONNECT endpoint URLs
     public static final String KAFKA_CONNECT_REST_URL = "/connectors";

@@ -312,26 +312,12 @@ public class FlinkTransformProcessor {
     }
 
     /**
-     *
-     * @param dfJob
-     * @param vertx
-     * @param maxRunTime
-     * @param flinkEnv
-     * @param zookeeperHostPort
-     * @param kafkaHostPort
-     * @param groupid
-     * @param colNameList
-     * @param colSchemaList
-     * @param inputTopic
-     * @param outputTopic
-     * @param transSql
-     * @param mongoClient
-     * @param mongoCOLLECTION
-     * @param jobManagerHostPort
-     * @param routingContext
+     * This method lunch a local flink CLI and connect specified job manager in order to cancel the job.
+     * Job may not exist. In this case, just delete it for now.
+     * @param jobManagerHostPort The job manager address and port where to send cancel
+     * @param jarFile The Jar file name uploaded
      */
-    public static void runFlinkJar (   String jarFile,
-                                       String jobManagerHostPort) {
+    public static void runFlinkJar (String jarFile, String jobManagerHostPort) {
 
         try {
             String runCMD = "run;-m;" + jobManagerHostPort + ";" + jarFile;
@@ -340,11 +326,6 @@ public class FlinkTransformProcessor {
             String respMsg = (retCode == 0)? "Flink job is submitted for Jar UDF at " :
                     "Flink job is failed to submit for Jar UDF at " + jarFile;
             LOG.info(respMsg);
-
-//            if(cancelRepoAndSendResp) {
-//                mongoClient.removeDocument(mongoCOLLECTION, new JsonObject().put("_id", id),
-//                        remove -> routingContext.response().end(id + respMsg));
-//            }
 
         } catch (IllegalArgumentException ire) {
             LOG.warn("No Flink job found with ID for cancellation");
